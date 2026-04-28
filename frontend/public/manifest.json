@@ -1,0 +1,13 @@
+{
+  "name": "PM Internship Scheme",
+  "short_name": "PMIS",
+  "description": "AI-Powered Internship Finder for India's Youth",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a1628",
+  "theme_color": "#0a1628",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "favicon.ico", "sizes": "64x64", "type": "image/x-icon" }
+  ]
+}

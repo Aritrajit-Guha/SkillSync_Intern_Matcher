@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "name": "pmis-frontend",
+  "builds": [
+    {
+      "src": "frontend/index.html",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/frontend/$1"
+    }
+  ],
+  "env": {
+    "VITE_API_BASE_URL": "https://pmis-backend.onrender.com/api"
+  }
+}

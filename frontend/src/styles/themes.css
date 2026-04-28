@@ -1,0 +1,52 @@
+/* ─── CSS Custom Properties / Design Tokens ─────────────────── */
+:root {
+  /* Color palette */
+  --navy:       #0a1628;
+  --navy-mid:   #0f2044;
+  --navy-soft:  #162a52;
+  --navy-border:#1e3a6e;
+
+  --saffron:    #f97316;
+  --saffron-l:  #fb923c;
+  --saffron-d:  #ea580c;
+
+  --green:      #10b981;
+  --green-l:    #34d399;
+  --green-d:    #059669;
+
+  --amber:      #f59e0b;
+  --rose:       #f43f5e;
+  --sky:        #38bdf8;
+  --violet:     #a78bfa;
+
+  /* Text */
+  --text:       #e2e8f0;
+  --text-soft:  #cbd5e1;
+  --muted:      #94a3b8;
+  --muted-d:    #64748b;
+
+  /* Surfaces */
+  --card:       rgba(15, 32, 68, 0.72);
+  --card-hover: rgba(22, 42, 82, 0.85);
+  --border:     rgba(255, 255, 255, 0.08);
+  --border-mid: rgba(255, 255, 255, 0.12);
+
+  /* Glows */
+  --glow-s:     0 0 20px rgba(249, 115, 22, 0.35);
+  --glow-g:     0 0 20px rgba(16, 185, 129, 0.35);
+  --glow-v:     0 0 20px rgba(167, 139, 250, 0.35);
+
+  /* Shape */
+  --radius:     16px;
+  --radius-sm:  10px;
+  --radius-xs:  6px;
+
+  /* Typography */
+  --font:       'Sora', sans-serif;
+  --font-body:  'DM Sans', sans-serif;
+
+  /* Motion */
+  --ease:       cubic-bezier(0.4, 0, 0.2, 1);
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --spring:     0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}

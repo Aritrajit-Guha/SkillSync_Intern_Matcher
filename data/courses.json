@@ -1,0 +1,26 @@
+{
+  "communication": [
+    { "icon": "🗣️", "title": "Effective Communication Skills", "platform": "NPTEL",    "duration": "4 weeks", "url": "https://nptel.ac.in"        },
+    { "icon": "✍️", "title": "Business Writing in English",    "platform": "IGNOU",    "duration": "2 weeks", "url": "https://ignou.ac.in"        }
+  ],
+  "finance": [
+    { "icon": "💰", "title": "Basics of Financial Literacy",   "platform": "NISM",     "duration": "3 weeks", "url": "https://www.nism.ac.in"     },
+    { "icon": "📈", "title": "Accounting Fundamentals",        "platform": "NIELIT",   "duration": "4 weeks", "url": "https://nielit.gov.in"      }
+  ],
+  "excel": [
+    { "icon": "📊", "title": "MS Excel for Data Management",   "platform": "PMKVY",    "duration": "2 weeks", "url": "https://www.pmkvyofficial.org" },
+    { "icon": "📉", "title": "Spreadsheet Data Analysis",      "platform": "NPTEL",    "duration": "3 weeks", "url": "https://nptel.ac.in"        }
+  ],
+  "digital": [
+    { "icon": "💻", "title": "Digital Literacy Programme",     "platform": "PMGDISHA", "duration": "2 weeks", "url": "https://pmgdisha.in"        },
+    { "icon": "📱", "title": "Introduction to Smartphones",    "platform": "NIELIT",   "duration": "1 week",  "url": "https://nielit.gov.in"      }
+  ],
+  "data": [
+    { "icon": "📐", "title": "Data Analysis Basics",           "platform": "NPTEL",    "duration": "4 weeks", "url": "https://nptel.ac.in"        },
+    { "icon": "🔢", "title": "Statistics for Beginners",       "platform": "SWAYAM",   "duration": "3 weeks", "url": "https://swayam.gov.in"      }
+  ],
+  "coding": [
+    { "icon": "🐍", "title": "Python Programming Basics",      "platform": "NPTEL",    "duration": "6 weeks", "url": "https://nptel.ac.in"        },
+    { "icon": "🌐", "title": "Web Development Fundamentals",   "platform": "NIELIT",   "duration": "4 weeks", "url": "https://nielit.gov.in"      }
+  ]
+}

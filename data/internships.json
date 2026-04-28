@@ -1,0 +1,102 @@
+[
+  {
+    "id": "nabard", "icon": "🌾",
+    "title": "Rural Finance Intern", "org": "NABARD",
+    "sector": "agriculture", "state": "any",
+    "skills": ["communication", "finance"],
+    "education": ["graduation", "postgrad"],
+    "stipend": "₹4,500/mo", "duration": "3 months",
+    "location": "Pan India", "seats": 120,
+    "desc": "Support rural credit & microfinance operations across field offices."
+  },
+  {
+    "id": "cag", "icon": "📊",
+    "title": "Audit & Accounts Trainee", "org": "CAG of India",
+    "sector": "finance", "state": "any",
+    "skills": ["finance", "excel"],
+    "education": ["graduation", "postgrad"],
+    "stipend": "₹5,000/mo", "duration": "6 months",
+    "location": "Delhi / Remote", "seats": 80,
+    "desc": "Assist in government audit processes and financial document review."
+  },
+  {
+    "id": "mygov", "icon": "💻",
+    "title": "Digital Governance Intern", "org": "MyGov India",
+    "sector": "technology", "state": "any",
+    "skills": ["communication", "digital"],
+    "education": ["class12", "graduation", "postgrad"],
+    "stipend": "₹3,000/mo", "duration": "2 months",
+    "location": "Remote", "seats": 200,
+    "desc": "Help with citizen engagement campaigns and digital content management."
+  },
+  {
+    "id": "nhsrc", "icon": "🏥",
+    "title": "Health Systems Research Intern", "org": "NHSRC",
+    "sector": "health", "state": "any",
+    "skills": ["data", "communication"],
+    "education": ["graduation", "postgrad"],
+    "stipend": "₹6,000/mo", "duration": "3 months",
+    "location": "Delhi / Hybrid", "seats": 50,
+    "desc": "Assist health policy research and data analysis under NHM framework."
+  },
+  {
+    "id": "msme", "icon": "🏭",
+    "title": "MSME Development Intern", "org": "Ministry of MSME",
+    "sector": "business", "state": "any",
+    "skills": ["communication", "excel", "finance"],
+    "education": ["graduation", "postgrad"],
+    "stipend": "₹4,000/mo", "duration": "3 months",
+    "location": "Pan India", "seats": 150,
+    "desc": "Support cluster development and enterprise facilitation programs."
+  },
+  {
+    "id": "isro", "icon": "🚀",
+    "title": "Space Applications Intern", "org": "ISRO / NRSC",
+    "sector": "technology", "state": "any",
+    "skills": ["coding", "data", "digital"],
+    "education": ["graduation", "postgrad"],
+    "stipend": "₹8,000/mo", "duration": "6 months",
+    "location": "Hyderabad", "seats": 30,
+    "desc": "Work on GIS data processing and satellite image analysis projects."
+  },
+  {
+    "id": "nrlm", "icon": "🤝",
+    "title": "Community Mobilisation Intern", "org": "DAY-NRLM",
+    "sector": "social", "state": "any",
+    "skills": ["communication"],
+    "education": ["class12", "graduation"],
+    "stipend": "₹3,500/mo", "duration": "3 months",
+    "location": "Rural Districts", "seats": 300,
+    "desc": "Support self-help group formation and livelihood promotion in villages."
+  },
+  {
+    "id": "skill", "icon": "📚",
+    "title": "Skill Trainer Assistant", "org": "NSDC / PMKVY",
+    "sector": "education", "state": "any",
+    "skills": ["communication", "digital"],
+    "education": ["class10", "class12", "graduation"],
+    "stipend": "₹3,000/mo", "duration": "2 months",
+    "location": "Pan India", "seats": 500,
+    "desc": "Assist vocational trainers and help coordinate skill certification batches."
+  },
+  {
+    "id": "aajiv", "icon": "🌿",
+    "title": "Livelihood Promotion Intern", "org": "Aajeevika Mission",
+    "sector": "agriculture", "state": "any",
+    "skills": ["communication"],
+    "education": ["class12", "graduation"],
+    "stipend": "₹3,500/mo", "duration": "3 months",
+    "location": "Tribal / Rural Zones", "seats": 200,
+    "desc": "Support tribal communities in sustainable agriculture & market linkage."
+  },
+  {
+    "id": "dbt", "icon": "🧬",
+    "title": "Biotechnology Research Intern", "org": "DBT India",
+    "sector": "health", "state": "any",
+    "skills": ["data", "coding"],
+    "education": ["graduation", "postgrad"],
+    "stipend": "₹7,000/mo", "duration": "6 months",
+    "location": "Pan India", "seats": 40,
+    "desc": "Assist cutting-edge biotech research labs under the DBT program."
+  }
+]

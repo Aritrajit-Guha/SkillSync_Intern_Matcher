@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#0a1628" />
+  <meta name="description" content="AI-Powered Internship Finder for PM Internship Scheme" />
+  <title>PM Internship Scheme</title>
+  <link rel="manifest" href="public/manifest.json" />
+  <link rel="icon" href="public/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="src/styles/themes.css" />
+  <link rel="stylesheet" href="src/styles/main.css" />
+  <link rel="stylesheet" href="src/styles/mobile.css" />
+</head>
+<body>
+  <!-- Background Effects -->
+  <div class="bg-mesh" aria-hidden="true"></div>
+  <div class="bg-grid" aria-hidden="true"></div>
+
+  <div id="app">
+    <!-- Header -->
+    <header class="header" role="banner">
+      <div class="header-inner">
+        <div class="logo-badge" aria-label="PM Internship Scheme Logo">IN</div>
+        <div class="header-titles">
+          <h1 id="header-title">PM Internship Scheme</h1>
+          <p id="header-sub">AI-Powered Internship Finder | प्रधानमंत्री इंटर्नशिप योजना</p>
+        </div>
+      </div>
+    </header>
+
+    <!-- Language Toggle -->
+    <nav id="lang-bar" class="lang-bar" aria-label="Language selector" role="navigation"></nav>
+
+    <!-- Step Navigation -->
+    <nav id="step-nav" class="step-nav" aria-label="Steps" role="tablist"></nav>
+
+    <!-- Sections -->
+    <main role="main">
+      <section id="sec-profile" class="section active" role="tabpanel" aria-label="Profile"></section>
+      <section id="sec-matches" class="section" role="tabpanel" aria-label="Matches"></section>
+      <section id="sec-upskill" class="section" role="tabpanel" aria-label="Upskill Roadmap"></section>
+      <section id="sec-progress" class="section" role="tabpanel" aria-label="Progress"></section>
+    </main>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Scripts -->
+  <script src="src/i18n/en.json" type="application/json" id="i18n-en"></script>
+  <script src="src/utils/storage.js"></script>
+  <script src="src/utils/helpers.js"></script>
+  <script src="src/utils/api.js"></script>
+  <script src="src/components/LanguageToggle.js"></script>
+  <script src="src/components/StepTabs.js"></script>
+  <script src="src/components/SkillChip.js"></script>
+  <script src="src/components/ProfileForm.js"></script>
+  <script src="src/components/InternshipCard.js"></script>
+  <script src="src/components/SkillGapBanner.js"></script>
+  <script src="src/components/EligibleBanner.js"></script>
+  <script src="src/components/RoadmapStep.js"></script>
+  <script src="src/components/CourseCard.js"></script>
+  <script src="src/components/ProgressBar.js"></script>
+  <script src="src/components/MilestoneBadge.js"></script>
+  <script src="src/pages/ProfilePage.js"></script>
+  <script src="src/pages/MatchesPage.js"></script>
+  <script src="src/pages/RoadmapPage.js"></script>
+  <script src="src/pages/ProgressPage.js"></script>
+  <script src="src/main.js"></script>
+</body>
+</html>

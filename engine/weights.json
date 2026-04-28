@@ -1,0 +1,10 @@
+{
+  "education_match":   30,
+  "sector_preference": 20,
+  "location_match":    10,
+  "skill_per_required": "40 / len(required_skills)",
+  "tfidf_blend":       0.3,
+  "rule_blend":        0.7,
+  "near_miss_threshold": 2,
+  "top_n": 5
+}
