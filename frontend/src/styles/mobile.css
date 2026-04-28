@@ -1,44 +1,20 @@
-/* ─── Mobile-first Overrides (≤ 380px) ──────────────────────── */
-@media (max-width: 380px) {
-  .header-titles h1   { font-size: 13px; }
-  .header-titles p    { font-size: 10px; }
-  .logo-badge         { width: 38px; height: 38px; font-size: 14px; }
-  .section            { padding: 16px; }
-  .section-head h2    { font-size: 19px; }
-  .step-label         { font-size: 9px; }
-  .step-num           { font-size: 14px; }
-  .badges-grid        { grid-template-columns: repeat(4,1fr); }
-  .xp-total           { font-size: 22px; }
-  .card-title         { font-size: 13px; }
-  .btn-primary        { font-size: 14px; padding: 14px; }
+/* ─── Mobile Responsive ────────────────────────────────────────── */
+@media (max-width: 480px) {
+  #app { box-shadow: none; }
+  .section { padding: 18px 14px; }
+  .header-inner { padding: 12px 14px 14px; }
+  .lang-bar { padding: 10px 14px; }
+  .step-nav { }
+  .step-btn { padding: 10px 4px 8px; }
+  .step-label { font-size: 9px; }
+  .stats-row { grid-template-columns: repeat(3,1fr); gap: 8px; }
+  .stat-num { font-size: 18px; }
+  .badges-grid { grid-template-columns: repeat(5,1fr); gap: 6px; }
+  .badge-item { padding: 10px 4px; }
+  .badge-icon { font-size: 18px; }
 }
 
-/* ─── Tablet (481px – 768px) ─────────────────────────────────── */
-@media (min-width: 481px) and (max-width: 768px) {
-  #app { padding: 0 16px 100px; }
-}
-
-/* ─── Desktop (> 768px) ──────────────────────────────────────── */
-@media (min-width: 769px) {
-  #app            { padding: 20px 0 100px; }
-  .header         { border-radius: 0 0 var(--radius) var(--radius); }
-  .section-head h2 { font-size: 26px; }
-  .badges-grid    { grid-template-columns: repeat(5,1fr); }
-}
-
-/* ─── Reduced motion ─────────────────────────────────────────── */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
-}
-
-/* ─── High contrast mode ─────────────────────────────────────── */
-@media (prefers-contrast: high) {
-  .i-card     { border-width: 2px; }
-  .lang-btn   { border-width: 2px; }
-  .course-check { border-width: 3px; }
-}
-
-/* ─── iOS safe area ──────────────────────────────────────────── */
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  #app { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+@media (min-width: 481px) {
+  body { background: var(--surface); }
+  #app { margin-top: 24px; margin-bottom: 24px; border-radius: 16px; min-height: auto; }
 }
