@@ -1,26 +1,106 @@
 {
-  "communication": [
-    { "icon": "🗣️", "title": "Effective Communication Skills", "platform": "NPTEL",    "duration": "4 weeks", "url": "https://nptel.ac.in"        },
-    { "icon": "✍️", "title": "Business Writing in English",    "platform": "IGNOU",    "duration": "2 weeks", "url": "https://ignou.ac.in"        }
+  "aws": [
+    { "icon": "☁️", "title": "AWS Cloud Foundations", "platform": "AWS Educate", "duration": "1 week", "url": "#" },
+    { "icon": "🛠️", "title": "Deploy a Sample Service on AWS", "platform": "Hands-on Lab", "duration": "2 weeks", "url": "#" }
   ],
-  "finance": [
-    { "icon": "💰", "title": "Basics of Financial Literacy",   "platform": "NISM",     "duration": "3 weeks", "url": "https://www.nism.ac.in"     },
-    { "icon": "📈", "title": "Accounting Fundamentals",        "platform": "NIELIT",   "duration": "4 weeks", "url": "https://nielit.gov.in"      }
+  "react": [
+    { "icon": "⚛️", "title": "React UI Foundations", "platform": "Frontend Academy", "duration": "1 week", "url": "#" },
+    { "icon": "💡", "title": "Build a Reusable Dashboard in React", "platform": "Project Lab", "duration": "2 weeks", "url": "#" }
   ],
-  "excel": [
-    { "icon": "📊", "title": "MS Excel for Data Management",   "platform": "PMKVY",    "duration": "2 weeks", "url": "https://www.pmkvyofficial.org" },
-    { "icon": "📉", "title": "Spreadsheet Data Analysis",      "platform": "NPTEL",    "duration": "3 weeks", "url": "https://nptel.ac.in"        }
+  "python": [
+    { "icon": "🐍", "title": "Python for Backend Work", "platform": "Developer Track", "duration": "1 week", "url": "#" },
+    { "icon": "🔌", "title": "Build a Python API Project", "platform": "Project Lab", "duration": "2 weeks", "url": "#" }
   ],
-  "digital": [
-    { "icon": "💻", "title": "Digital Literacy Programme",     "platform": "PMGDISHA", "duration": "2 weeks", "url": "https://pmgdisha.in"        },
-    { "icon": "📱", "title": "Introduction to Smartphones",    "platform": "NIELIT",   "duration": "1 week",  "url": "https://nielit.gov.in"      }
+  "machine-learning": [
+    { "icon": "🤖", "title": "Machine Learning Essentials", "platform": "AI Foundations", "duration": "2 weeks", "url": "#" },
+    { "icon": "📈", "title": "Train and Evaluate a Small Model", "platform": "Experiment Lab", "duration": "2 weeks", "url": "#" }
   ],
-  "data": [
-    { "icon": "📐", "title": "Data Analysis Basics",           "platform": "NPTEL",    "duration": "4 weeks", "url": "https://nptel.ac.in"        },
-    { "icon": "🔢", "title": "Statistics for Beginners",       "platform": "SWAYAM",   "duration": "3 weeks", "url": "https://swayam.gov.in"      }
+  "data-analysis": [
+    { "icon": "📊", "title": "Data Analysis Essentials", "platform": "Analytics Track", "duration": "1 week", "url": "#" },
+    { "icon": "🧾", "title": "Create an Insight Dashboard", "platform": "Project Lab", "duration": "2 weeks", "url": "#" }
   ],
-  "coding": [
-    { "icon": "🐍", "title": "Python Programming Basics",      "platform": "NPTEL",    "duration": "6 weeks", "url": "https://nptel.ac.in"        },
-    { "icon": "🌐", "title": "Web Development Fundamentals",   "platform": "NIELIT",   "duration": "4 weeks", "url": "https://nielit.gov.in"      }
+  "typescript": [
+    { "icon": "📘", "title": "TypeScript Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "TypeScript Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "nodejs": [
+    { "icon": "📘", "title": "Node.js Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "Node.js Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "mongodb": [
+    { "icon": "📘", "title": "MongoDB Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "MongoDB Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "flask": [
+    { "icon": "📘", "title": "Flask Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "Flask Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "git": [
+    { "icon": "📘", "title": "Git Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "Git Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "fastapi": [
+    { "icon": "📘", "title": "FastAPI Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "FastAPI Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "tensorflow": [
+    { "icon": "📘", "title": "TensorFlow Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "TensorFlow Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "numpy": [
+    { "icon": "📘", "title": "NumPy Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "NumPy Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "html-css": [
+    { "icon": "📘", "title": "HTML/CSS Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "HTML/CSS Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "cpp": [
+    { "icon": "📘", "title": "C++ Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "C++ Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "express": [
+    { "icon": "📘", "title": "Express Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "Express Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "spring-boot": [
+    { "icon": "📘", "title": "Spring Boot Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "Spring Boot Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "sql": [
+    { "icon": "📘", "title": "SQL Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "SQL Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "pandas": [
+    { "icon": "📘", "title": "Pandas Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "Pandas Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "ui-ux": [
+    { "icon": "📘", "title": "UI/UX Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "UI/UX Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "figma": [
+    { "icon": "📘", "title": "Figma Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "Figma Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "java": [
+    { "icon": "📘", "title": "Java Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "Java Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "django": [
+    { "icon": "📘", "title": "Django Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "Django Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "linux": [
+    { "icon": "📘", "title": "Linux Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "Linux Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "jira": [
+    { "icon": "📘", "title": "JIRA Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "JIRA Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
+  ],
+  "problem-solving": [
+    { "icon": "📘", "title": "Problem Solving Fundamentals Sprint", "platform": "Skill Bridge", "duration": "1 week", "url": "#" },
+    { "icon": "🧪", "title": "Problem Solving Practical Project Lab", "platform": "Career Launchpad", "duration": "2 weeks", "url": "#" }
   ]
 }

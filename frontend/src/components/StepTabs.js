@@ -1,5 +1,5 @@
 /**
- * StepTabs — Renders the 4-step navigation tabs.
+ * StepTabs - Renders the candidate journey tabs.
  */
 const StepTabs = {
   render(currentStep, doneSteps, labels) {
@@ -8,7 +8,7 @@ const StepTabs = {
     container.innerHTML = labels.map((label, i) => {
       const n = i + 1;
       const isActive = currentStep === n;
-      const isDone   = doneSteps.has(n);
+      const isDone = doneSteps.has(n);
       return `
         <button
           class="step-btn${isActive ? ' active' : ''}${isDone ? ' done' : ''}"

@@ -1,61 +1,73 @@
-/* ─── Design Tokens — Clean Government / Official ─────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Nunito+Sans:opsz,wght@6..12,400;6..12,500;6..12,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap');
 
 :root {
-  /* Core palette — crisp whites, deep navy, saffron accent */
+  /* Primary teal — Internshala-style */
+  --teal:         #16a085;
+  --teal-d:       #0e8a72;
+  --teal-l:       #1abc9c;
+  --teal-bg:      #e8f8f5;
+  --teal-border:  #a2d9ce;
+
+  --blue:         #2980b9;
+  --blue-d:       #1a6fa3;
+  --blue-bg:      #eaf4fb;
+
+  --orange:       #e67e22;
+  --orange-bg:    #fef5ec;
+  --orange-border:#f5cba7;
+
+  --green:        #27ae60;
+  --green-bg:     #eafaf1;
+  --green-border: #a9dfbf;
+
+  --red:          #e74c3c;
+  --red-bg:       #fdedec;
+  --red-border:   #f5b7b1;
+
+  --purple:       #8e44ad;
+  --purple-bg:    #f5eef8;
+
+  /* Surfaces */
   --white:        #ffffff;
-  --off-white:    #f8fafc;
-  --surface:      #f1f5f9;
-  --surface-2:    #e8eef5;
-
-  --navy:         #0f2d5e;
-  --navy-mid:     #1a3f7a;
-  --navy-light:   #2554a0;
-  --navy-soft:    #3b6cc7;
-
-  --saffron:      #e8660a;
-  --saffron-l:    #f97316;
-  --saffron-d:    #c2530a;
-  --saffron-bg:   #fff4ec;
-
-  --green:        #0d7a4e;
-  --green-l:      #16a34a;
-  --green-bg:     #f0fdf4;
-
-  --red:          #dc2626;
-  --red-bg:       #fef2f2;
-
-  --amber:        #d97706;
-  --amber-bg:     #fffbeb;
+  --gray-50:      #f8f9fa;
+  --gray-100:     #f1f3f5;
+  --gray-200:     #e9ecef;
+  --gray-300:     #dee2e6;
+  --gray-400:     #ced4da;
+  --gray-500:     #adb5bd;
+  --gray-600:     #6c757d;
+  --gray-700:     #495057;
+  --gray-800:     #343a40;
+  --gray-900:     #212529;
 
   /* Text */
-  --text:         #0f172a;
-  --text-soft:    #334155;
-  --muted:        #64748b;
-  --muted-l:      #94a3b8;
+  --text:         #212529;
+  --text-soft:    #495057;
+  --muted:        #6c757d;
+  --muted-l:      #adb5bd;
 
   /* Borders */
-  --border:       #dde3ec;
-  --border-dark:  #c5cdd8;
+  --border:       #e9ecef;
+  --border-dark:  #dee2e6;
 
   /* Shadows */
-  --shadow-xs:    0 1px 2px rgba(15,45,94,.06);
-  --shadow-sm:    0 2px 8px rgba(15,45,94,.08), 0 1px 2px rgba(15,45,94,.04);
-  --shadow-md:    0 4px 16px rgba(15,45,94,.10), 0 2px 4px rgba(15,45,94,.06);
-  --shadow-lg:    0 8px 32px rgba(15,45,94,.12), 0 4px 8px rgba(15,45,94,.06);
+  --shadow-xs:  0 1px 3px rgba(0,0,0,.06);
+  --shadow-sm:  0 2px 8px rgba(0,0,0,.08);
+  --shadow-md:  0 4px 16px rgba(0,0,0,.10);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,.12);
+  --shadow-card: 0 2px 12px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.04);
 
   /* Shape */
-  --radius:       12px;
-  --radius-sm:    8px;
-  --radius-xs:    5px;
-  --radius-pill:  100px;
+  --radius:     10px;
+  --radius-sm:  6px;
+  --radius-xs:  4px;
+  --radius-pill:100px;
 
   /* Typography */
-  --font:         'Plus Jakarta Sans', sans-serif;
-  --font-body:    'Nunito Sans', sans-serif;
+  --font:       'Poppins', sans-serif;
+  --font-body:  'Inter', sans-serif;
 
   /* Motion */
-  --ease:         cubic-bezier(0.4, 0, 0.2, 1);
-  --transition:   0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  --spring:       0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease:       cubic-bezier(0.4, 0, 0.2, 1);
+  --transition: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }

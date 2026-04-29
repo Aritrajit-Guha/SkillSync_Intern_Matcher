@@ -1,49 +1,85 @@
 /**
- * main.js — Application bootstrap & global state manager.
+ * main.js - Application bootstrap and global state manager.
  */
 
-// ─── Static Data (used when backend unavailable) ──────────────────
-const STATIC_INTERNSHIPS = [
-  { id:'nabard', icon:'🌾', title:'Rural Finance Intern',          org:'NABARD',          sector:'agriculture', skills:['communication','finance'],          education:['graduation','postgrad'],            stipend:'₹4,500/mo', duration:'3 months', location:'Pan India',          seats:120 },
-  { id:'cag',    icon:'📊', title:'Audit & Accounts Trainee',      org:'CAG of India',    sector:'finance',     skills:['finance','excel'],                  education:['graduation','postgrad'],            stipend:'₹5,000/mo', duration:'6 months', location:'Delhi / Remote',     seats:80  },
-  { id:'mygov',  icon:'💻', title:'Digital Governance Intern',     org:'MyGov India',     sector:'technology',  skills:['communication','digital'],          education:['class12','graduation','postgrad'],  stipend:'₹3,000/mo', duration:'2 months', location:'Remote',             seats:200 },
-  { id:'nhsrc',  icon:'🏥', title:'Health Systems Research Intern',org:'NHSRC',           sector:'health',      skills:['data','communication'],             education:['graduation','postgrad'],            stipend:'₹6,000/mo', duration:'3 months', location:'Delhi / Hybrid',     seats:50  },
-  { id:'msme',   icon:'🏭', title:'MSME Development Intern',       org:'Min. of MSME',    sector:'business',    skills:['communication','excel','finance'],   education:['graduation','postgrad'],            stipend:'₹4,000/mo', duration:'3 months', location:'Pan India',          seats:150 },
-  { id:'isro',   icon:'🚀', title:'Space Applications Intern',     org:'ISRO / NRSC',     sector:'technology',  skills:['coding','data','digital'],          education:['graduation','postgrad'],            stipend:'₹8,000/mo', duration:'6 months', location:'Hyderabad',          seats:30  },
-  { id:'nrlm',   icon:'🤝', title:'Community Mobilisation Intern', org:'DAY-NRLM',        sector:'social',      skills:['communication'],                    education:['class12','graduation'],             stipend:'₹3,500/mo', duration:'3 months', location:'Rural Districts',    seats:300 },
-  { id:'skill',  icon:'📚', title:'Skill Trainer Assistant',       org:'NSDC / PMKVY',    sector:'education',   skills:['communication','digital'],          education:['class10','class12','graduation'],   stipend:'₹3,000/mo', duration:'2 months', location:'Pan India',          seats:500 },
-  { id:'aajiv',  icon:'🌿', title:'Livelihood Promotion Intern',   org:'Aajeevika Mission',sector:'agriculture', skills:['communication'],                   education:['class12','graduation'],             stipend:'₹3,500/mo', duration:'3 months', location:'Tribal / Rural',     seats:200 },
-  { id:'dbt',    icon:'🧬', title:'Biotechnology Research Intern', org:'DBT India',        sector:'health',      skills:['data','coding'],                    education:['graduation','postgrad'],            stipend:'₹7,000/mo', duration:'6 months', location:'Pan India',          seats:40  }
-];
+const STATIC_INTERNSHIPS = window.INTERNSHIP_DATA || [];
+const SKILL_LABELS = { ...ProfileForm.SKILLS };
+const TRACK_LABELS = { ...ProfileForm.SECTORS };
 
-const STATIC_COURSES = {
-  communication: [
-    { icon:'🗣️', title:'Effective Communication Skills', platform:'NPTEL',    duration:'4 weeks', url:'https://nptel.ac.in'   },
-    { icon:'✍️', title:'Business Writing in English',    platform:'IGNOU',    duration:'2 weeks', url:'https://ignou.ac.in'   }
-  ],
-  finance: [
-    { icon:'💰', title:'Basics of Financial Literacy',   platform:'NISM',     duration:'3 weeks', url:'https://nism.ac.in'    },
-    { icon:'📈', title:'Accounting Fundamentals',        platform:'NIELIT',   duration:'4 weeks', url:'https://nielit.gov.in' }
-  ],
-  excel: [
-    { icon:'📊', title:'MS Excel for Data Management',   platform:'PMKVY',    duration:'2 weeks', url:'https://pmkvyofficial.org' },
-    { icon:'📉', title:'Spreadsheet Data Analysis',      platform:'NPTEL',    duration:'3 weeks', url:'https://nptel.ac.in'   }
-  ],
-  digital: [
-    { icon:'💻', title:'Digital Literacy Programme',     platform:'PMGDISHA', duration:'2 weeks', url:'https://pmgdisha.in'   },
-    { icon:'📱', title:'Introduction to Smartphones',    platform:'NIELIT',   duration:'1 week',  url:'https://nielit.gov.in' }
-  ],
-  data: [
-    { icon:'📐', title:'Data Analysis Basics',           platform:'NPTEL',    duration:'4 weeks', url:'https://nptel.ac.in'   },
-    { icon:'🔢', title:'Statistics for Beginners',       platform:'SWAYAM',   duration:'3 weeks', url:'https://swayam.gov.in' }
-  ],
-  coding: [
-    { icon:'🐍', title:'Python Programming Basics',      platform:'NPTEL',    duration:'6 weeks', url:'https://nptel.ac.in'   },
-    { icon:'🌐', title:'Web Development Fundamentals',   platform:'NIELIT',   duration:'4 weeks', url:'https://nielit.gov.in' }
-  ]
+const SKILL_COACH = {
+  python: "Start with Python syntax, functions, and backend problem solving. Then build one API-focused mini project.",
+  javascript: "Focus on DOM logic, async behavior, and interactive UI flows before moving into production patterns.",
+  react: "Learn components, props, state, and layout composition. Finish with a reusable dashboard project.",
+  nodejs: "Practice server basics, API routes, and data handling so you can support backend-driven products.",
+  django: "Cover models, views, forms, and authentication. End with a small CRUD app deployment.",
+  flask: "Use Flask for lightweight APIs and service logic. Build confidence with small production-like projects.",
+  fastapi: "Learn request validation, async endpoints, and clean API design for modern backend roles.",
+  sql: "Work on SELECT, JOIN, aggregation, and filtering until query writing becomes natural.",
+  mongodb: "Practice document modeling, CRUD operations, and connecting data to app features.",
+  aws: "Understand cloud basics, deployment flow, storage, and compute services used in real teams.",
+  docker: "Learn containers, image basics, and how to run repeatable local environments.",
+  git: "Improve commit hygiene, branching, pull requests, and collaboration safety.",
+  typescript: "Focus on typed interfaces, props, and safer app logic in frontend and backend work.",
+  "machine-learning": "Strengthen data preparation, evaluation, and model experimentation before larger projects.",
+  "data-analysis": "Build comfort with cleaning, trends, dashboards, and communicating insights clearly.",
+  pandas: "Practice filtering, joins, grouping, and shaping messy datasets into useful outputs.",
+  numpy: "Work on arrays, vectorized operations, and numeric thinking for technical problem solving.",
+  "html-css": "Refine semantic structure, layout systems, spacing, and responsive interface building.",
+  java: "Cover OOP basics, collections, backend fundamentals, and practical debugging patterns.",
+  cpp: "Improve fundamentals, memory awareness, and structured problem solving through focused exercises.",
+  figma: "Learn interface framing, component systems, and developer-ready design handoff.",
+  "ui-ux": "Strengthen usability thinking, interaction flows, and user-centered decision making.",
+  "spring-boot": "Practice service architecture, REST APIs, and production-style backend structure.",
+  express: "Use Express to learn routing, middleware, and lightweight service construction.",
+  linux: "Build confidence with terminal usage, file systems, and basic environment troubleshooting.",
+  jira: "Improve planning discipline, issue tracking, and team workflow visibility.",
+  "problem-solving": "Show structured thinking by breaking unclear tasks into steps, tradeoffs, and outcomes.",
+  tensorflow: "Focus on ML workflows, model training, and practical experimentation patterns."
 };
 
-// ─── I18N Loader ──────────────────────────────────────────────────
+const COURSE_TEMPLATES = {
+  default: skill => ([
+    { icon: "📘", title: `${skill} Foundations`, platform: "Skill Bridge", duration: "1 week", url: "#" },
+    { icon: "🧪", title: `${skill} Project Practice`, platform: "Career Launchpad", duration: "2 weeks", url: "#" }
+  ]),
+  java: () => ([
+    { icon: "☕", title: "Java Basics to OOP", platform: "Developer Track", duration: "1 week", url: "#" },
+    { icon: "🧩", title: "Java Mini Backend Project", platform: "Project Lab", duration: "2 weeks", url: "#" }
+  ]),
+  python: () => ([
+    { icon: "🐍", title: "Python for Backend Work", platform: "Developer Track", duration: "1 week", url: "#" },
+    { icon: "🔌", title: "Build a Python API Project", platform: "Project Lab", duration: "2 weeks", url: "#" }
+  ]),
+  react: () => ([
+    { icon: "⚛️", title: "React UI Foundations", platform: "Frontend Academy", duration: "1 week", url: "#" },
+    { icon: "💡", title: "Build a Reusable Dashboard in React", platform: "Project Lab", duration: "2 weeks", url: "#" }
+  ]),
+  aws: () => ([
+    { icon: "☁️", title: "AWS Cloud Foundations", platform: "AWS Educate", duration: "1 week", url: "#" },
+    { icon: "🛠️", title: "Deploy a Sample Service on AWS", platform: "Hands-on Lab", duration: "2 weeks", url: "#" }
+  ]),
+  "machine-learning": () => ([
+    { icon: "🤖", title: "Machine Learning Essentials", platform: "AI Foundations", duration: "2 weeks", url: "#" },
+    { icon: "📈", title: "Train and Evaluate a Small Model", platform: "Experiment Lab", duration: "2 weeks", url: "#" }
+  ]),
+  "data-analysis": () => ([
+    { icon: "📊", title: "Data Analysis Essentials", platform: "Analytics Track", duration: "1 week", url: "#" },
+    { icon: "🧾", title: "Create an Insight Dashboard", platform: "Project Lab", duration: "2 weeks", url: "#" }
+  ])
+};
+
+function createCourseLibrary() {
+  const skills = [...new Set(STATIC_INTERNSHIPS.flatMap(item => item.skills || []))];
+  return skills.reduce((acc, skillKey) => {
+    const label = SKILL_LABELS[skillKey] || skillKey;
+    const factory = COURSE_TEMPLATES[skillKey] || COURSE_TEMPLATES.default;
+    acc[skillKey] = factory(label);
+    return acc;
+  }, {});
+}
+
+const STATIC_COURSES = createCourseLibrary();
+
 const TRANSLATIONS = {};
 ['en','hi','bn','te','mr','ta'].forEach(code => {
   fetch(`src/i18n/${code}.json`)
@@ -52,117 +88,213 @@ const TRANSLATIONS = {};
     .catch(() => {});
 });
 
-// ─── App State ────────────────────────────────────────────────────
 window.APP_STATE = {
-  lang:             'en',
-  step:             1,
-  profile:          { state:'', education:'', stream:'', skills:[], sectors:[] },
-  results:          [],
-  roadmapFor:       null,
+  currentView: 'home',
+  lang: 'en',
+  step: 1,
+  profile: { state:'', education:'', stream:'', skills:[], sectors:[] },
+  results: [],
+  roadmapFor: null,
+  applyFor: null,
+  selectedHomeInternship: null,
   completedCourses: new Set(),
-  xp:               0,
-  activities:       [],
-  doneSteps:        new Set(),
-  translations:     null
+  appliedInternships: new Set(),
+  applicationDrafts: {},
+  xp: 0,
+  activities: [],
+  doneSteps: new Set(),
+  translations: null
 };
 
-// ─── App Controller ───────────────────────────────────────────────
 const App = {
-  // ── Init ──────────────────────────────────────────────────────
   init() {
     this.loadPersisted();
-    this.applyLang('en');
-    this.goStep(1);
+    this.applyLang(APP_STATE.lang || 'en');
+    this.renderLayout();
+    this.setActiveStepSection(APP_STATE.step || 1);
+    this.renderCurrentStep();
   },
 
   loadPersisted() {
     const saved = Storage.get('appState');
-    if (saved) {
-      APP_STATE.xp         = saved.xp || 0;
-      APP_STATE.activities = saved.activities || [];
-      APP_STATE.doneSteps  = new Set(saved.doneSteps || []);
-      APP_STATE.completedCourses = new Set(saved.completedCourses || []);
-      APP_STATE.profile    = saved.profile || APP_STATE.profile;
-      APP_STATE.lang       = saved.lang || 'en';
-    }
+    if (!saved) return;
+    APP_STATE.currentView = saved.currentView || 'home';
+    APP_STATE.lang = saved.lang || 'en';
+    APP_STATE.step = saved.step || 1;
+    APP_STATE.profile = saved.profile || APP_STATE.profile;
+    APP_STATE.results = saved.results || [];
+    APP_STATE.roadmapFor = saved.roadmapFor || null;
+    APP_STATE.applyFor = saved.applyFor || null;
+    APP_STATE.selectedHomeInternship = saved.selectedHomeInternship || null;
+    APP_STATE.completedCourses = new Set(saved.completedCourses || []);
+    APP_STATE.appliedInternships = new Set(saved.appliedInternships || []);
+    APP_STATE.applicationDrafts = saved.applicationDrafts || {};
+    APP_STATE.xp = saved.xp || 0;
+    APP_STATE.activities = saved.activities || [];
+    APP_STATE.doneSteps = new Set(saved.doneSteps || []);
   },
 
   persist() {
     Storage.set('appState', {
-      xp:               APP_STATE.xp,
-      activities:       APP_STATE.activities,
-      doneSteps:        [...APP_STATE.doneSteps],
+      currentView: APP_STATE.currentView,
+      lang: APP_STATE.lang,
+      step: APP_STATE.step,
+      profile: APP_STATE.profile,
+      results: APP_STATE.results,
+      roadmapFor: APP_STATE.roadmapFor,
+      applyFor: APP_STATE.applyFor,
+      selectedHomeInternship: APP_STATE.selectedHomeInternship,
       completedCourses: [...APP_STATE.completedCourses],
-      profile:          APP_STATE.profile,
-      lang:             APP_STATE.lang
+      appliedInternships: [...APP_STATE.appliedInternships],
+      applicationDrafts: APP_STATE.applicationDrafts,
+      xp: APP_STATE.xp,
+      activities: APP_STATE.activities,
+      doneSteps: [...APP_STATE.doneSteps]
     });
   },
 
-  // ── Language ──────────────────────────────────────────────────
-  applyLang(code) {
-    APP_STATE.lang = code;
-    // Try loaded translations, fallback to embedded
-    const T = TRANSLATIONS[code];
-    if (T) {
-      APP_STATE.translations = T;
-    } else {
-      // minimal fallback
-      APP_STATE.translations = {
-        profileHead:'Build Your Profile', profileSub:'Tell us about yourself.',
-        stateLabel:'State', statePlaceholder:'— Select —',
-        eduLabel:'Education', eduPlaceholder:'— Select —',
-        streamLabel:'Stream', streamPlaceholder:'— Select —',
-        skillsLabel:'Skills', skillsHint:'Select all', sectorLabel:'Sectors', sectorHint:'Pick sectors',
-        findBtn:'Find Internships →', matchHead:'Your Matches', matchSub:'internships found',
-        upskillHead:'Learning Roadmap', upskillSub:'Close skill gaps',
-        progressHead:'Your Progress', progressSub:'Track XP and badges',
-        statusEligible:'✅ Eligible', statusNear:'⚡ Near-miss', statusGap:'📚 Build Skills',
-        applyNow:'Apply Now', viewRoadmap:'View Roadmap', learnFirst:'Learn First',
-        gapLabel:'Missing:', overallProgress:'Progress', courses:'courses',
-        nowEligible:'🎉 Now Eligible!', nowEligibleSub:'All gaps closed.',
-        backToApply:'← Back to Apply', activityLog:'Activity', badges:'Badges',
-        totalXP:'Total XP', level:'Level', nextLevel:'Next',
-        completeProfile:'Complete your profile to start!',
-        markComplete:'Mark complete', noMatches:'No matches found.',
-        loading:'Loading...', error:'Error. Try again.'
-      };
-    }
-    document.getElementById('header-title').textContent = APP_STATE.translations.title || 'PM Internship Scheme';
-    document.getElementById('header-sub').textContent   = APP_STATE.translations.subtitle || '';
-    LanguageToggle.render(code, c => App.applyLang(c));
-    this.renderCurrentStep();
-    this.persist();
-    const names = { en:'🇬🇧 English', hi:'🇮🇳 हिन्दी', bn:'🇧🇩 বাংলা', te:'🇮🇳 తెలుగు', mr:'🇮🇳 मराठी', ta:'🇮🇳 தமிழ்' };
-    showToast(names[code] || code);
+  getFallbackTranslations() {
+    return {
+      title:'PM Internship Scheme',
+      subtitle:'Professional internship matching with guided upskilling',
+      profileHead:'Create your candidate profile',
+      profileSub:'Add your location, education, and skills so we can show the strongest matches.',
+      stateLabel:'Preferred location',
+      statePlaceholder:'Select location',
+      eduLabel:'Education level',
+      eduPlaceholder:'Select education',
+      streamLabel:'Primary focus',
+      streamPlaceholder:'Select focus area',
+      skillsLabel:'Current skills',
+      skillsHint:'Choose the skills you already have',
+      sectorLabel:'Role tracks',
+      sectorHint:'Choose the tracks you want to target',
+      findBtn:'Search internships',
+      matchHead:'Recommended internships',
+      matchSub:'best-fit roles',
+      upskillHead:'AI roadmap coach',
+      upskillSub:'Use the chatbot roadmap to close skill gaps and unlock applications.',
+      progressHead:'Progress hub',
+      progressSub:'Track readiness, applications, and progress in one place.',
+      statusEligible:'Eligible now',
+      statusNear:'Close match',
+      statusGap:'Needs roadmap',
+      applyNow:'Apply now',
+      viewRoadmap:'Open roadmap',
+      learnFirst:'Start roadmap',
+      gapLabel:'Skill gaps',
+      overallProgress:'Readiness',
+      courses:'learning steps',
+      nowEligible:'Application unlocked',
+      nowEligibleSub:'You completed the roadmap. The internship can now be applied for.',
+      backToApply:'Back to internships',
+      activityLog:'Recent activity',
+      badges:'Milestones',
+      totalXP:'Total XP',
+      level:'Level',
+      nextLevel:'Next level',
+      completeProfile:'Complete your profile to begin tracking progress.',
+      markComplete:'Mark complete',
+      noMatches:'No internships match yet. Add more skills or adjust your target tracks.',
+      loading:'Loading...',
+      error:'Something went wrong. Please try again.',
+      steps:['Profile','Matches','Roadmap','Progress','Apply']
+    };
   },
 
-  // ── Step Navigation ───────────────────────────────────────────
+  applyLang(code) {
+    APP_STATE.lang = code;
+    APP_STATE.translations = TRANSLATIONS[code] || this.getFallbackTranslations();
+    const title = document.getElementById('header-title');
+    const sub = document.getElementById('header-sub');
+    if (title) title.textContent = APP_STATE.translations.title || 'PM Internship Scheme';
+    if (sub) sub.textContent = APP_STATE.translations.subtitle || 'Professional internship matching with guided upskilling';
+    LanguageToggle.render(code, lang => App.applyLang(lang));
+    this.renderLayout();
+    this.renderCurrentStep();
+    this.persist();
+  },
+
+  renderLayout() {
+    HomePage.render(APP_STATE);
+    this.syncView();
+  },
+
+  syncView() {
+    const home = document.getElementById('home-view');
+    const candidate = document.getElementById('candidate-view');
+    if (home) home.style.display = APP_STATE.currentView === 'home' ? 'block' : 'none';
+    if (candidate) candidate.style.display = APP_STATE.currentView === 'candidate' ? 'block' : 'none';
+  },
+
+  enterCandidateFlow() {
+    APP_STATE.currentView = 'candidate';
+    this.syncView();
+    this.setActiveStepSection(APP_STATE.step || 1);
+    this.renderCurrentStep();
+    this.persist();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  },
+
+  goHome() {
+    APP_STATE.currentView = 'home';
+    this.syncView();
+    this.persist();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  },
+
+  scrollToHomeSection(id) {
+    if (APP_STATE.currentView !== 'home') {
+      APP_STATE.currentView = 'home';
+      this.syncView();
+    }
+    this.persist();
+    const el = document.getElementById(id);
+    if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  },
+
+  openHomeInternship(id) {
+    APP_STATE.selectedHomeInternship = id;
+    APP_STATE.currentView = 'candidate';
+    APP_STATE.step = 1;
+    this.syncView();
+    this.setActiveStepSection(1);
+    this.renderCurrentStep();
+    this.persist();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  },
+
+  setActiveStepSection(n) {
+    document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
+    const map = { 1:'sec-profile', 2:'sec-matches', 3:'sec-upskill', 4:'sec-progress', 5:'sec-apply' };
+    const current = document.getElementById(map[n]);
+    if (current) current.classList.add('active');
+  },
+
   goStep(n) {
     APP_STATE.step = n;
-    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    const map = { 1:'sec-profile', 2:'sec-matches', 3:'sec-upskill', 4:'sec-progress' };
-    const sec = document.getElementById(map[n]);
-    if (sec) {
-      sec.classList.add('active');
-      sec.scrollIntoView({ behavior:'smooth', block:'start' });
-    }
-    StepTabs.render(n, APP_STATE.doneSteps, APP_STATE.translations.steps || ['Profile','Matches','Upskill','Progress']);
+    APP_STATE.currentView = 'candidate';
+    this.syncView();
+    this.setActiveStepSection(n);
+    StepTabs.render(n, APP_STATE.doneSteps, APP_STATE.translations.steps || ['Profile','Matches','Roadmap','Progress','Apply']);
     this.renderCurrentStep();
+    this.persist();
   },
 
   renderCurrentStep() {
-    StepTabs.render(APP_STATE.step, APP_STATE.doneSteps, APP_STATE.translations.steps || ['Profile','Matches','Upskill','Progress']);
+    StepTabs.render(APP_STATE.step, APP_STATE.doneSteps, APP_STATE.translations.steps || ['Profile','Matches','Roadmap','Progress','Apply']);
     switch (APP_STATE.step) {
-      case 1: ProfilePage.render(APP_STATE);   break;
-      case 2: MatchesPage.render(APP_STATE);   break;
-      case 3: RoadmapPage.render(APP_STATE);   break;
-      case 4: ProgressPage.render(APP_STATE);  break;
+      case 1: ProfilePage.render(APP_STATE); break;
+      case 2: MatchesPage.render(APP_STATE); break;
+      case 3: RoadmapPage.render(APP_STATE); break;
+      case 4: ProgressPage.render(APP_STATE); break;
+      case 5: ApplyPage.render(APP_STATE); break;
     }
   },
 
-  // ── Profile ───────────────────────────────────────────────────
   updateProfile(key, value) {
     APP_STATE.profile[key] = value;
+    this.persist();
   },
 
   toggleSkill(v) {
@@ -170,6 +302,7 @@ const App = {
     const idx = arr.indexOf(v);
     if (idx === -1) arr.push(v); else arr.splice(idx, 1);
     SkillChip.update('skill', v, arr.includes(v));
+    this.persist();
   },
 
   toggleSector(v) {
@@ -177,99 +310,187 @@ const App = {
     const idx = arr.indexOf(v);
     if (idx === -1) arr.push(v); else arr.splice(idx, 1);
     SkillChip.update('sector', v, arr.includes(v));
+    this.persist();
   },
 
-  // ── Matching Engine ───────────────────────────────────────────
+  normalizeResults(results) {
+    return results.map(item => {
+      const profileSkills = new Set(APP_STATE.profile.skills);
+      const matchedSkills = (item.skills || []).filter(skill => profileSkills.has(skill));
+      const missingSkills = (item.skills || []).filter(skill => !profileSkills.has(skill));
+      const skillScore = (item.skills || []).length ? (matchedSkills.length / item.skills.length) * 55 : 0;
+      const statePref = (APP_STATE.profile.state || '').toLowerCase();
+      const locationText = `${item.location || ''} ${item.state || ''}`.toLowerCase();
+      const locationScore = !statePref ? 8 : locationText.includes(statePref) || locationText.includes('remote') ? 20 : 0;
+      const educationScore = (item.education || []).includes(APP_STATE.profile.education) ? 15 : 2;
+      const sectorScore = APP_STATE.profile.sectors.includes(item.sector) ? 10 : 0;
+      const experienceScore = ['Fresher', 'Entry-level', '0-1 Years', '0-6 Months'].includes(item.experience) ? 10 : 4;
+      const score = clamp(Math.round(skillScore + locationScore + educationScore + sectorScore + experienceScore), 5, 100);
+      const status = missingSkills.length === 0 ? 'eligible' : missingSkills.length <= 2 ? 'near-miss' : 'gap';
+      return { ...item, score, matchedSkills, missingSkills, status };
+    }).sort((a, b) => {
+      if (APP_STATE.selectedHomeInternship && a.id === APP_STATE.selectedHomeInternship) return -1;
+      if (APP_STATE.selectedHomeInternship && b.id === APP_STATE.selectedHomeInternship) return 1;
+      return b.score - a.score;
+    });
+  },
+
   runMatching() {
-    const p = APP_STATE.profile;
-    if (!p.education) { showToast('⚠️ Please select your education level'); return; }
+    if (!APP_STATE.profile.education || APP_STATE.profile.skills.length === 0) {
+      showToast('Add education and at least one skill to get strong internship matches.');
+      return;
+    }
 
-    const scored = STATIC_INTERNSHIPS.map(intern => {
-      let score = 0;
-      const missing = [];
-
-      // Education match (30 pts)
-      if (intern.education.includes(p.education)) score += 30;
-      else score += 8;
-
-      // Skills match (50 pts)
-      const w = intern.skills.length > 0 ? 50 / intern.skills.length : 0;
-      for (const s of intern.skills) {
-        if (p.skills.includes(s)) score += w;
-        else missing.push(s);
-      }
-
-      // Sector match (20 pts)
-      if (p.sectors.includes(intern.sector)) score += 20;
-
-      const status = missing.length === 0 ? 'eligible'
-                   : missing.length <= 2   ? 'near-miss'
-                   : 'gap';
-
-      return { ...intern, score: Math.round(score), missingSkills: missing, status };
-    }).sort((a,b) => b.score - a.score).slice(0, 5);
-
-    APP_STATE.results   = scored;
+    const normalized = this.normalizeResults(STATIC_INTERNSHIPS);
+    APP_STATE.results = normalized.slice(0, 5);
     APP_STATE.doneSteps.add(1);
-
-    this.addXP(30, '🌱 Profile created', 'green', 'profile_done');
-    MatchesPage.render(APP_STATE);
-    this.goStep(2);
-    fireConfetti();
+    this.addXP(30, 'Created candidate profile', 'green', 'profile_done');
     this.persist();
+
+    if (APP_STATE.selectedHomeInternship) {
+      const target = this.getInternshipById(APP_STATE.selectedHomeInternship);
+      if (target) {
+        const progress = this.getInternshipProgress(target);
+        if (progress.unlocked) {
+          this.openApplyPage(target.id);
+          return;
+        }
+        APP_STATE.roadmapFor = target.id;
+        this.goStep(3);
+        return;
+      }
+    }
+
+    this.goStep(2);
+    fireConfetti(24);
   },
 
-  // ── Apply / Roadmap ───────────────────────────────────────────
-  onApply(id) {
-    this.addXP(50, `✅ Applied for internship`, 'green', `apply_${id}`);
-    showToast('🎉 Application noted! +50 XP');
-    fireConfetti();
-    this.persist();
+  getCoursesForSkill(skillKey) {
+    return STATIC_COURSES[skillKey] || COURSE_TEMPLATES.default(SKILL_LABELS[skillKey] || skillKey);
+  },
+
+  getCourseId(skillKey, title) {
+    return `${skillKey}-${title.replace(/\s+/g, '_')}`;
+  },
+
+  getInternshipById(id) {
+    return APP_STATE.results.find(item => item.id === id) || STATIC_INTERNSHIPS.find(item => item.id === id);
+  },
+
+  getInternshipProgress(internship) {
+    const missingSkills = internship.missingSkills || [];
+    const courseItems = missingSkills.flatMap(skill => this.getCoursesForSkill(skill).map(course => ({
+      id: this.getCourseId(skill, course.title),
+      skill
+    })));
+    const done = courseItems.filter(item => APP_STATE.completedCourses.has(item.id)).length;
+    const total = courseItems.length;
+    const percent = total === 0 ? 100 : Math.round((done / total) * 100);
+    return { total, done, percent, unlocked: percent === 100, missingSkills };
+  },
+
+  getInternshipAction(internship) {
+    const progress = this.getInternshipProgress(internship);
+    const applied = APP_STATE.appliedInternships.has(internship.id);
+    if (applied) return { label: 'Applied', className: 'applied', disabled: true, action: '' };
+    if (progress.unlocked) return { label: 'Apply now', className: 'apply', disabled: false, action: `App.openApplyPage('${internship.id}')` };
+    return { label: 'Open roadmap', className: 'roadmap', disabled: false, action: `App.onRoadmap('${internship.id}')` };
+  },
+
+  buildCoachPlan(internship) {
+    const progress = this.getInternshipProgress(internship);
+    const chat = progress.missingSkills.map(skill => ({
+      skill,
+      label: SKILL_LABELS[skill] || skill,
+      summary: SKILL_COACH[skill] || 'Build practical confidence through short, focused project work.'
+    }));
+    return {
+      heading: progress.unlocked
+        ? `You are now ready to apply for ${internship.title}.`
+        : `Here is your roadmap for ${internship.title}.`,
+      message: progress.unlocked
+        ? 'The application step is unlocked. You can move directly to the application form.'
+        : `The chatbot has mapped your missing skills and generated a focused plan to close them.`,
+      plan: chat
+    };
   },
 
   onRoadmap(id) {
     APP_STATE.roadmapFor = id;
     APP_STATE.doneSteps.add(2);
-    RoadmapPage.render(APP_STATE);
     this.goStep(3);
   },
 
-  // ── Course Completion ─────────────────────────────────────────
   markCourse(cid) {
     if (APP_STATE.completedCourses.has(cid)) return;
     APP_STATE.completedCourses.add(cid);
     APP_STATE.doneSteps.add(3);
-
-    this.addXP(25, `📚 Completed a course`, 'sky', `course_${cid}`);
-    showToast('📚 Course complete! +25 XP');
-
-    // Check if all courses for this roadmap are done
-    const intern = APP_STATE.results.find(r => r.id === APP_STATE.roadmapFor);
-    if (intern) {
-      const all = intern.missingSkills.flatMap(skill =>
-        (STATIC_COURSES[skill]||[]).map(c => `${skill}-${c.title.replace(/\s+/g,'_')}`)
-      );
-      if (all.length > 0 && all.every(c => APP_STATE.completedCourses.has(c))) {
-        fireConfetti();
-        this.addXP(100, `🏆 Internship unlocked!`, 'green', `unlock_${intern.id}`);
-        showToast('🏆 Internship Unlocked! +100 XP');
-      }
+    this.addXP(25, 'Completed a roadmap step', 'sky', `course_${cid}`);
+    const internship = this.getInternshipById(APP_STATE.roadmapFor);
+    if (internship && this.getInternshipProgress(internship).unlocked) {
+      this.addXP(100, `Unlocked ${internship.title}`, 'green', `unlock_${internship.id}`);
+      showToast('Roadmap complete. Application unlocked.');
+    } else {
+      showToast('Roadmap step completed');
     }
-
+    MatchesPage.render(APP_STATE);
     RoadmapPage.render(APP_STATE);
     ProgressPage.render(APP_STATE);
-    StepTabs.render(APP_STATE.step, APP_STATE.doneSteps, APP_STATE.translations.steps);
     this.persist();
   },
 
-  // ── XP System ─────────────────────────────────────────────────
+  openApplyPage(id) {
+    const internship = this.getInternshipById(id);
+    if (!internship) return;
+    const progress = this.getInternshipProgress(internship);
+    if (!progress.unlocked || APP_STATE.appliedInternships.has(id)) {
+      showToast(progress.unlocked ? 'This internship is already applied.' : 'Complete the roadmap to unlock this application.');
+      return;
+    }
+    APP_STATE.applyFor = id;
+    APP_STATE.doneSteps.add(4);
+    this.goStep(5);
+  },
+
+  updateApplicationDraft(internshipId, key, value) {
+    const draft = APP_STATE.applicationDrafts[internshipId] || {};
+    draft[key] = value;
+    APP_STATE.applicationDrafts[internshipId] = draft;
+    this.persist();
+  },
+
+  captureResume(internshipId, input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    this.updateApplicationDraft(internshipId, 'resumeName', file.name);
+    showToast('Resume selected');
+    ApplyPage.render(APP_STATE);
+  },
+
+  submitApplication(internshipId) {
+    const draft = APP_STATE.applicationDrafts[internshipId] || {};
+    if (!draft.fullName || !draft.email || !draft.phone || !draft.cgpa || !draft.college || !draft.resumeName) {
+      showToast('Please complete all required application details and upload your resume.');
+      return;
+    }
+    if (APP_STATE.appliedInternships.has(internshipId)) return;
+    APP_STATE.appliedInternships.add(internshipId);
+    APP_STATE.doneSteps.add(5);
+    this.addXP(60, `Applied for ${this.getInternshipById(internshipId)?.title || 'internship'}`, 'green', `apply_${internshipId}`);
+    showToast('Application submitted');
+    this.goStep(2);
+  },
+
+  getCandidateSummary() {
+    const unlocked = APP_STATE.results.filter(item => this.getInternshipProgress(item).unlocked).length;
+    return { unlocked, applied: APP_STATE.appliedInternships.size, total: APP_STATE.results.length };
+  },
+
   addXP(amount, text, color, id) {
-    if (APP_STATE.activities.find(a => a.id === id)) return;
+    if (APP_STATE.activities.find(item => item.id === id)) return;
     APP_STATE.xp += amount;
     APP_STATE.activities.push({ id, xp: amount, text, color });
-    if (APP_STATE.step === 4) ProgressPage.render(APP_STATE);
   }
 };
 
-// ─── Boot ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => App.init());
