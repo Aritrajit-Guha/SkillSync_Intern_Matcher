@@ -1,0 +1,78 @@
+import pytest
+
+from backend.app import create_app
+
+
+@pytest.fixture
+def client(tmp_path):
+    app = create_app()
+    app.config.update(TESTING=True, SECRET_KEY="test-secret")
+    app.instance_path = str(tmp_path)
+    with app.test_client() as test_client:
+        yield test_client
+
+
+def test_health(client):
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    assert response.json["status"] == "ok"
+    assert response.json["data_source"] == "json"
+
+
+def test_recommend_missing_body(client):
+    response = client.post("/api/recommend", content_type="application/json", data="{}")
+    assert response.status_code == 400
+
+
+def test_recommend_valid(client):
+    response = client.post("/api/recommend", json={
+        "state": "Remote",
+        "education": "graduation",
+        "skills": ["python", "javascript"],
+        "sectors": ["engineering"],
+    })
+    assert response.status_code == 200
+    assert "results" in response.json
+    assert isinstance(response.json["results"], list)
+
+
+def test_courses_all(client):
+    response = client.get("/api/courses")
+    assert response.status_code == 200
+    assert isinstance(response.json, dict)
+
+
+def test_courses_skill(client):
+    response = client.get("/api/courses/python")
+    assert response.status_code == 200
+    assert response.json["skill"] == "python"
+
+
+def test_internships_list(client):
+    response = client.get("/api/internships")
+    assert response.status_code == 200
+    assert "internships" in response.json
+    assert response.json["count"] > 0
+
+
+def test_progress_save_and_load(client):
+    payload = {
+        "user_id": "candidate-1",
+        "xp": 55,
+        "completedCourses": ["python-foundations"],
+        "activities": [{"id": "a1", "text": "Completed", "xp": 55}],
+    }
+    save = client.post("/api/progress", json=payload)
+    assert save.status_code == 200
+    assert save.json["saved"] is True
+
+    load = client.get("/api/progress/candidate-1")
+    assert load.status_code == 200
+    assert load.json["xp"] == 55
+    assert load.json["completedCourses"] == ["python-foundations"]
+
+
+def test_session(client):
+    response = client.post("/api/session", json={})
+    assert response.status_code == 200
+    assert "user_id" in response.json

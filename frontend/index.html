@@ -1,106 +1,19 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <meta name="theme-color" content="#0f2d5e" />
-  <meta name="description" content="AI-Powered Internship Finder for PM Internship Scheme" />
-  <title>PM Internship Scheme</title>
-  <link rel="manifest" href="public/manifest.json" />
-  <link rel="icon" href="public/favicon.ico" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Nunito+Sans:opsz,wght@6..12,400;6..12,500;6..12,600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="src/styles/themes.css" />
-  <link rel="stylesheet" href="src/styles/main.css" />
-  <link rel="stylesheet" href="src/styles/mobile.css" />
-</head>
-<body>
-  <div id="app">
-    <header class="site-header" role="banner">
-      <div class="top-strip">
-        <div class="top-strip-inner">
-          <p class="top-strip-copy">AI-powered internship discovery, learning roadmaps, and career support for PM Internship Scheme candidates.</p>
-          <nav id="lang-bar" class="lang-bar" aria-label="Language selector" role="navigation"></nav>
-        </div>
-      </div>
-
-      <div class="navbar-shell">
-        <div class="navbar">
-          <button class="brand-block" onclick="App.goHome()" aria-label="Go to PM Internship Scheme home">
-            <span class="brand-mark">PM</span>
-            <span class="brand-text">
-              <strong id="header-title">PM Internship Scheme</strong>
-              <small id="header-sub">Smart discovery for internships and upskilling</small>
-            </span>
-          </button>
-
-          <nav class="main-nav" aria-label="Primary">
-            <button class="nav-link" onclick="App.goHome()">Home</button>
-            <button class="nav-link" onclick="App.scrollToHomeSection('about-us')">About Us</button>
-            <button class="nav-link" onclick="App.scrollToHomeSection('contact-us')">Contact Us</button>
-          </nav>
-
-          <div class="nav-actions">
-            <button class="btn-nav-secondary" onclick="App.scrollToHomeSection('featured-opportunities')">Explore Internships</button>
-            <button class="btn-nav-primary" onclick="App.enterCandidateFlow()">Candidate Profile</button>
-          </div>
-        </div>
-      </div>
-    </header>
-
-    <main class="app-main" role="main">
-      <section id="home-view" class="home-view"></section>
-
-      <section id="candidate-view" class="candidate-view" aria-label="Candidate flow">
-        <div class="candidate-shell">
-          <div class="candidate-shell-top">
-            <div class="candidate-copy">
-              <span class="candidate-kicker">Candidate Workspace</span>
-              <h2>Create your profile and unlock the best-fit internships</h2>
-              <p>Build your profile, search internships, close skill gaps, and track progress in one place.</p>
-            </div>
-            <button class="btn-candidate-back" onclick="App.goHome()">Back to Home</button>
-          </div>
-
-          <nav id="step-nav" class="step-nav" aria-label="Steps" role="tablist"></nav>
-
-          <div class="candidate-sections">
-            <section id="sec-profile"  class="section active" role="tabpanel" aria-label="Profile"></section>
-            <section id="sec-matches"  class="section"        role="tabpanel" aria-label="Matches"></section>
-            <section id="sec-upskill"  class="section"        role="tabpanel" aria-label="Upskill Roadmap"></section>
-            <section id="sec-progress" class="section"        role="tabpanel" aria-label="Progress"></section>
-            <section id="sec-apply"    class="section"        role="tabpanel" aria-label="Apply"></section>
-          </div>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-  <script src="src/i18n/en.json" type="application/json" id="i18n-en"></script>
-  <script src="src/utils/storage.js"></script>
-  <script src="src/utils/helpers.js"></script>
-  <script src="src/utils/api.js"></script>
-  <script src="src/components/LanguageToggle.js"></script>
-  <script src="src/components/StepTabs.js"></script>
-  <script src="src/components/SkillChip.js"></script>
-  <script src="src/components/ProfileForm.js"></script>
-  <script src="src/components/InternshipCard.js"></script>
-  <script src="src/components/SkillGapBanner.js"></script>
-  <script src="src/components/EligibleBanner.js"></script>
-  <script src="src/components/RoadmapStep.js"></script>
-  <script src="src/components/CourseCard.js"></script>
-  <script src="src/components/ProgressBar.js"></script>
-  <script src="src/components/MilestoneBadge.js"></script>
-  <script src="src/data/internships.js"></script>
-  <script src="src/pages/HomePage.js"></script>
-  <script src="src/pages/ProfilePage.js"></script>
-  <script src="src/pages/MatchesPage.js"></script>
-  <script src="src/pages/RoadmapPage.js"></script>
-  <script src="src/pages/ProgressPage.js"></script>
-  <script src="src/pages/ApplyPage.js"></script>
-  <script src="src/main.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <meta name="theme-color" content="#0f2d5e" />
+    <meta name="description" content="AI-powered internship finder for PM Internship Scheme candidates" />
+    <title>PM Internship Scheme</title>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Nunito+Sans:opsz,wght@6..12,400;6..12,500;6..12,600&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>

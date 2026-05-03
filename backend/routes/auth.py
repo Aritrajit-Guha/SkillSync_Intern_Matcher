@@ -1,19 +1,20 @@
-"""
-routes/auth.py — Lightweight anonymous session management.
-"""
 import uuid
-from flask import Blueprint, request, jsonify, session
+
+from flask import Blueprint, jsonify, request, session
 
 auth_bp = Blueprint("auth", __name__)
 
+
 @auth_bp.route("/session", methods=["POST"])
 def create_session():
-    """Create or retrieve an anonymous user session."""
     user_id = session.get("user_id")
+    is_new = user_id is None
     if not user_id:
         user_id = str(uuid.uuid4())
         session["user_id"] = user_id
-    return jsonify({"user_id": user_id, "new": "user_id" not in request.json if request.json else True})
+    body = request.get_json(silent=True) or {}
+    return jsonify({"user_id": body.get("user_id", user_id), "new": is_new})
+
 
 @auth_bp.route("/session", methods=["GET"])
 def get_session():

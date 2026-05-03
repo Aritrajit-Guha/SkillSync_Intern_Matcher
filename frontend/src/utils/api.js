@@ -1,57 +1,49 @@
-/**
- * api.js — Backend API client with fallback to static data.
- */
-const API = (() => {
-  const BASE = window.API_BASE_URL || 'http://localhost:5000/api';
-  const TIMEOUT = 5000;
+const BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+const TIMEOUT = 5000;
 
-  async function fetchWithTimeout(url, options = {}) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT);
-    try {
-      const res = await fetch(url, { ...options, signal: controller.signal });
-      clearTimeout(timer);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    } catch (err) {
-      clearTimeout(timer);
-      throw err;
-    }
+async function fetchWithTimeout(url, options = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timer);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+  } catch (error) {
+    clearTimeout(timer);
+    throw error;
   }
+}
 
-  async function getRecommendations(profile) {
+function localRecommendations(profile, internships) {
+  const profileSkills = new Set(profile.skills || []);
+  return internships.map(item => {
+    const missingSkills = (item.skills || []).filter(skill => !profileSkills.has(skill));
+    return {
+      ...item,
+      missingSkills,
+      status: missingSkills.length === 0 ? 'eligible' : missingSkills.length <= 2 ? 'near-miss' : 'gap',
+    };
+  });
+}
+
+export const API = {
+  async getRecommendations(profile, fallbackInternships = []) {
     try {
       return await fetchWithTimeout(`${BASE}/recommend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profile)
+        body: JSON.stringify(profile),
       });
     } catch {
-      // Fallback: run scoring client-side
-      return { results: runLocalScoring(profile), source: 'local' };
+      return { results: localRecommendations(profile, fallbackInternships), source: 'local' };
     }
-  }
-
-  async function getCourses(skillId) {
-    try {
-      return await fetchWithTimeout(`${BASE}/courses/${skillId}`);
-    } catch {
-      return { courses: STATIC_COURSES[skillId] || [], source: 'local' };
-    }
-  }
-
-  async function saveProgress(data) {
-    try {
-      return await fetchWithTimeout(`${BASE}/progress`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-    } catch {
-      Storage.set('progress', data);
-      return { saved: true, source: 'local' };
-    }
-  }
-
-  return { getRecommendations, getCourses, saveProgress };
-})();
+  },
+  async saveProgress(data) {
+    return fetchWithTimeout(`${BASE}/progress`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+};

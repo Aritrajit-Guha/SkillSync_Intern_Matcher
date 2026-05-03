@@ -1,10 +1,31 @@
-"""
-routes/progress.py — POST /api/progress, GET /api/progress/<user_id>
-"""
-from flask import Blueprint, request, jsonify
-from database.db import get_db
+import json
+import os
+
+from flask import Blueprint, current_app, jsonify, request
 
 progress_bp = Blueprint("progress", __name__)
+
+
+def _store_path():
+    os.makedirs(current_app.instance_path, exist_ok=True)
+    return os.path.join(current_app.instance_path, "progress.json")
+
+
+def _read_store():
+    path = _store_path()
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _write_store(data):
+    with open(_store_path(), "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
 
 @progress_bp.route("/progress", methods=["POST"])
 def save_progress():
@@ -12,28 +33,30 @@ def save_progress():
     if not data:
         return jsonify({"error": "Invalid JSON body"}), 400
 
-    user_id  = data.get("user_id", "anonymous")
-    xp       = data.get("xp", 0)
-    courses  = data.get("completedCourses", [])
+    user_id = data.get("user_id", "anonymous")
+    xp = int(data.get("xp", 0) or 0)
+    courses = data.get("completedCourses", [])
     activities = data.get("activities", [])
 
-    db = get_db()
-    db.execute(
-        "INSERT OR REPLACE INTO progress (user_id, xp, courses_json, activities_json) VALUES (?,?,?,?)",
-        (user_id, xp, str(courses), str(activities))
-    )
-    db.commit()
+    store = _read_store()
+    store[user_id] = {
+        "user_id": user_id,
+        "xp": xp,
+        "completedCourses": courses,
+        "courses": courses,
+        "activities": activities,
+    }
+    _write_store(store)
     return jsonify({"saved": True, "user_id": user_id})
+
 
 @progress_bp.route("/progress/<user_id>", methods=["GET"])
 def get_progress(user_id):
-    db  = get_db()
-    row = db.execute("SELECT * FROM progress WHERE user_id = ?", (user_id,)).fetchone()
-    if not row:
-        return jsonify({"user_id": user_id, "xp": 0, "courses": [], "activities": []}), 200
-    return jsonify({
-        "user_id":    row["user_id"],
-        "xp":         row["xp"],
-        "courses":    eval(row["courses_json"]),
-        "activities": eval(row["activities_json"])
-    })
+    store = _read_store()
+    return jsonify(store.get(user_id, {
+        "user_id": user_id,
+        "xp": 0,
+        "completedCourses": [],
+        "courses": [],
+        "activities": [],
+    })), 200
