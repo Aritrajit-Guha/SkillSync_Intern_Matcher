@@ -1,22 +1,24 @@
-"""
-routes/courses.py — GET /api/courses/<skill_id>
-"""
-import json, os
+import json
+import os
+
 from flask import Blueprint, jsonify
 
 courses_bp = Blueprint("courses", __name__)
-_DATA_PATH = os.path.join(os.path.dirname(__file__), "../../data/courses.json")
+_DATA_PATH = os.path.join(os.path.dirname(__file__), "../data/courses.json")
+
 
 def _load_courses():
     try:
-        with open(_DATA_PATH) as f:
+        with open(_DATA_PATH, encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return {}
 
+
 @courses_bp.route("/courses", methods=["GET"])
 def all_courses():
     return jsonify(_load_courses())
+
 
 @courses_bp.route("/courses/<skill_id>", methods=["GET"])
 def courses_for_skill(skill_id):

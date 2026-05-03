@@ -630,7 +630,7 @@ a { color: inherit; text-decoration: none; }
   width: min(860px, 100%);
   margin: 24px auto 0;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 12px;
 }
 
