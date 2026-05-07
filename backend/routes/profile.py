@@ -37,6 +37,7 @@ def update_profile():
         "highestQualification",
         "secondary",
         "higherSecondary",
+        "diploma",
         "graduation",
         "postGraduation",
         "skills",

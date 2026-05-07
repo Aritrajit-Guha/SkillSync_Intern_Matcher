@@ -38,6 +38,7 @@ def get_dashboard():
     applications = list_applications_for_user(user["id"])
     return jsonify({
         "profile": _public_user(user),
+        "recommended": recommendations["recommended"],
         "qualified": recommendations["qualified"],
         "stretch": recommendations["stretch"],
         "applications": applications,

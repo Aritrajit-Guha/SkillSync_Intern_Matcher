@@ -164,11 +164,14 @@ def score_internship_for_profile(profile, internship):
 
 def bucket_recommendations(profile, internships, limit=5):
     scored = [score_internship_for_profile(profile, item) for item in internships]
+    recommended = [item for item in scored if education_matches(profile, item)]
     qualified = [item for item in scored if item["isQualified"]]
     stretch = [item for item in scored if 1 <= len(item["missingSkills"]) <= 3 and education_matches(profile, item)]
+    recommended.sort(key=lambda item: (item["score"], -len(item["missingSkills"])), reverse=True)
     qualified.sort(key=lambda item: item["score"], reverse=True)
     stretch.sort(key=lambda item: (item["score"], -len(item["missingSkills"])), reverse=True)
     return {
+        "recommended": recommended[:limit],
         "qualified": qualified[:limit],
         "stretch": stretch[:limit],
     }

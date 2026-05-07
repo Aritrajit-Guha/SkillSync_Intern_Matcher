@@ -61,6 +61,7 @@ def register():
         "highestQualification": data.get("highestQualification", ""),
         "secondary": data.get("secondary", {}),
         "higherSecondary": data.get("higherSecondary", {}),
+        "diploma": data.get("diploma", {}),
         "graduation": data.get("graduation", {}),
         "postGraduation": data.get("postGraduation", {}),
         "skills": data.get("skills", []),

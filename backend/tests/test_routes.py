@@ -93,5 +93,6 @@ def test_register_login_dashboard_flow(client):
 
     dashboard = client.get("/api/dashboard")
     assert dashboard.status_code == 200
+    assert "recommended" in dashboard.json
     assert "qualified" in dashboard.json
     assert "stretch" in dashboard.json
