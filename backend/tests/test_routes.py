@@ -16,7 +16,7 @@ def test_health(client):
     response = client.get("/api/health")
     assert response.status_code == 200
     assert response.json["status"] == "ok"
-    assert response.json["data_source"] == "json"
+    assert response.json["data_source"] in {"file", "mongodb"}
 
 
 def test_recommend_missing_body(client):
@@ -76,3 +76,22 @@ def test_session(client):
     response = client.post("/api/session", json={})
     assert response.status_code == 200
     assert "user_id" in response.json
+
+
+def test_register_login_dashboard_flow(client):
+    register = client.post("/api/auth/register", json={
+        "fullName": "Test Candidate",
+        "email": "test@example.com",
+        "password": "secret123",
+        "phone": "9999999999",
+        "highestQualification": "graduation",
+        "skills": ["python", "react"],
+        "preferredLocations": ["Remote - India"],
+    })
+    assert register.status_code == 201
+    assert register.json["user"]["email"] == "test@example.com"
+
+    dashboard = client.get("/api/dashboard")
+    assert dashboard.status_code == 200
+    assert "qualified" in dashboard.json
+    assert "stretch" in dashboard.json

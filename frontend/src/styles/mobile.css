@@ -1,134 +1,44 @@
-@media (max-width: 980px) {
-  .navbar {
-    flex-wrap: wrap;
-  }
-
-  .main-nav,
-  .nav-actions {
-    width: 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .hero-grid,
-  .about-panel,
-  .stats-band-inner {
+@media (max-width: 1080px) {
+  .auth-shell,
+  .dual-layout {
     grid-template-columns: 1fr;
   }
 
-  .field-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .spotlight-stack {
-    grid-template-columns: 1fr;
-  }
-
-  .site-footer-inner,
-  .candidate-shell-top,
-  .section-title-row {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .step-nav {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .badges-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
-  .top-strip-inner,
-  .navbar,
-  .candidate-shell,
-  .stats-band-inner,
-  .content-section,
-  .site-footer-inner,
-  .hero-section {
-    width: min(100% - 20px, 100%);
-  }
-
-  .top-strip-inner {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .lang-bar {
-    justify-content: flex-start;
-  }
-
-  .brand-block {
-    width: 100%;
-  }
-
-  .hero-copy,
-  .hero-spotlight,
-  .feature-card,
-  .benefit-card,
-  .contact-card,
-  .candidate-shell,
-  .about-panel {
-    border-radius: 24px;
-  }
-
-  .hero-copy,
-  .about-panel,
-  .candidate-shell,
-  .feature-card,
-  .benefit-card,
-  .contact-card {
-    padding: 22px;
-  }
-
-  .hero-copy h1 {
-    font-size: 2.3rem;
-  }
-
-  .hero-copy p,
-  .candidate-copy p {
-    font-size: 15px;
-  }
-
-  .hero-actions,
-  .card-footer,
-  .xp-top,
-  .xp-labels,
-  .progress-labels,
-  .readiness-top,
-  .roadmap-mini-top,
-  .roadmap-chat-head,
-  .coach-user-bubble,
-  .coach-ai-bubble {
+  .page-hero,
+  .topbar {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .typing-indicator {
-    margin-left: 0;
+  .hero-actions,
+  .route-tabs {
+    flex-wrap: wrap;
   }
+}
 
-  .btn-nav-primary,
-  .btn-nav-secondary,
-  .btn-hero-primary,
-  .btn-hero-secondary,
-  .btn-candidate-back,
-  .ghost-link {
-    width: 100%;
-    text-align: center;
-  }
-
-  .step-nav {
+@media (max-width: 720px) {
+  .form-grid,
+  .hero-grid-mini,
+  .tracks-grid {
     grid-template-columns: 1fr;
   }
 
-  .stats-strip {
-    grid-template-columns: 1fr;
+  .topbar {
+    border-radius: 28px;
   }
 
-  .badges-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .internship-card-top,
+  .track-header,
+  .arena-top,
+  .level-row,
+  .stretch-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .chatbot-panel-head,
+  .chat-compose {
+    grid-template-columns: 1fr;
+    display: grid;
   }
 }
