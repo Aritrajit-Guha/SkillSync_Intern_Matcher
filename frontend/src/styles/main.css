@@ -13,6 +13,7 @@ body,
 
 body {
   font-family: var(--font-body);
+  line-height: 1.5;
   color: var(--text);
   background:
     radial-gradient(circle at top left, rgba(98, 225, 201, 0.18), transparent 28%),
@@ -29,6 +30,14 @@ textarea {
 
 button {
   cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgba(109, 247, 193, 0.65);
+  outline-offset: 2px;
 }
 
 img {
@@ -56,7 +65,7 @@ img {
   border: 1px solid var(--line);
   background: var(--surface);
   backdrop-filter: blur(18px);
-  box-shadow: var(--shadow-glow);
+  box-shadow: var(--shadow-glow), 0 12px 32px rgba(0, 0, 0, 0.24);
 }
 
 .auth-shell {
@@ -342,9 +351,12 @@ textarea {
 }
 
 .action-btn {
-  padding: 13px 18px;
+  padding: 12px 20px;
   border-radius: 999px;
   color: white;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  min-height: 46px;
 }
 
 .action-btn.primary {
@@ -365,6 +377,12 @@ textarea {
 .action-btn.disabled {
   background: rgba(255, 255, 255, 0.08);
   color: var(--muted);
+  cursor: not-allowed;
+}
+
+.action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.25);
 }
 
 .action-btn.wide {
@@ -417,6 +435,7 @@ textarea {
 
 .route-pill.active {
   background: linear-gradient(135deg, rgba(86, 184, 255, 0.24), rgba(109, 247, 193, 0.28));
+  border-color: rgba(109, 247, 193, 0.45);
 }
 
 .profile-menu-wrap {
@@ -461,6 +480,10 @@ textarea {
   background: transparent;
 }
 
+.profile-menu button:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .workspace {
   padding: 22px 0 48px;
 }
@@ -499,6 +522,7 @@ textarea {
   padding: 22px;
   display: grid;
   gap: 14px;
+  min-height: 100%;
 }
 
 .internship-card-top,
@@ -520,6 +544,7 @@ textarea {
   border: 1px solid var(--line);
   background: radial-gradient(circle, rgba(109, 247, 193, 0.2), rgba(86, 184, 255, 0.08));
   font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(109, 247, 193, 0.2);
 }
 
 .fit-meta-row {
@@ -540,10 +565,12 @@ textarea {
 
 .internship-status-pill.ready {
   color: var(--accent);
+  background: rgba(109, 247, 193, 0.1);
 }
 
 .internship-status-pill.gap {
   color: #ffd479;
+  background: rgba(255, 212, 121, 0.12);
 }
 
 .mini-form {
@@ -584,6 +611,7 @@ textarea {
 
 .stretch-item.active {
   outline: 1px solid rgba(109, 247, 193, 0.52);
+  background: linear-gradient(135deg, rgba(86, 184, 255, 0.12), rgba(109, 247, 193, 0.12));
 }
 
 .stretch-item em {
@@ -650,6 +678,7 @@ textarea {
   border-radius: 20px;
   padding: 14px 16px;
   border: 1px solid var(--line);
+  line-height: 1.55;
 }
 
 .chat-bubble.assistant {
@@ -705,17 +734,21 @@ textarea {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(109, 168, 255, 0.2);
 }
 
 .progress-meter-bar {
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  box-shadow: 0 0 20px rgba(109, 247, 193, 0.45);
+  transition: width 0.35s ease, background 0.3s ease;
 }
 
 .track-card {
   border-radius: 22px;
   padding: 18px;
+  position: relative;
 }
 
 .level-row {
@@ -725,6 +758,7 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  border-left: 3px solid rgba(109, 168, 255, 0.28);
 }
 
 .level-row-body {
@@ -742,6 +776,7 @@ textarea {
 
 .level-row.done {
   border-color: rgba(109, 247, 193, 0.45);
+  border-left-color: rgba(109, 247, 193, 0.9);
 }
 
 .mission-check {
@@ -865,6 +900,286 @@ textarea {
   transform: translateX(-50%) translateY(0);
 }
 
+.login-shell {
+  display: grid;
+  place-items: center;
+}
+
+.login-card {
+  width: min(560px, 100%);
+  border-radius: 28px;
+  border: 1px solid rgba(78, 163, 255, 0.36);
+  background:
+    radial-gradient(circle at 14% 8%, rgba(74, 132, 255, 0.2), transparent 42%),
+    linear-gradient(165deg, rgba(5, 15, 46, 0.97), rgba(3, 11, 36, 0.94));
+  box-shadow: inset 0 0 0 1px rgba(105, 184, 255, 0.1), 0 24px 70px rgba(1, 9, 32, 0.65);
+  padding: 30px;
+}
+
+.login-top-cta {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  color: #90a8d5;
+  font-size: 0.94rem;
+  margin-bottom: 28px;
+}
+
+.register-btn.ghost {
+  border-radius: 999px;
+  border: 1px solid rgba(80, 151, 255, 0.55);
+  padding: 9px 16px;
+  color: #6fb8ff;
+  background: rgba(18, 39, 84, 0.35);
+}
+
+.login-header h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.login-header p {
+  margin: 8px 0 22px;
+  color: #93a9ce;
+}
+
+.login-form {
+  display: grid;
+  gap: 18px;
+}
+
+.login-field > span {
+  margin-bottom: 10px;
+}
+
+.input-shell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(109, 168, 255, 0.22);
+  border-radius: 14px;
+  background: rgba(7, 20, 58, 0.58);
+  padding: 0 12px;
+}
+
+.input-shell input {
+  border: 0;
+  background: transparent;
+  min-height: 56px;
+  padding: 10px 0;
+}
+
+.input-shell input::placeholder {
+  color: #8299c1;
+}
+
+.input-icon {
+  color: #7f9ece;
+  font-size: 0.9rem;
+}
+
+.input-icon.right {
+  margin-left: auto;
+}
+
+.login-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.remember {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #c2d6fa;
+}
+
+.remember input {
+  min-height: auto;
+  width: auto;
+  accent-color: #4a88ff;
+}
+
+.login-row .text-link {
+  color: #67a9ff;
+}
+
+.login-primary-btn {
+  margin-top: 18px;
+  width: 100%;
+  min-height: 58px;
+  border: 0;
+  border-radius: 999px;
+  color: #f5fbff;
+  font-weight: 700;
+  font-size: 1.25rem;
+  background: linear-gradient(90deg, #3e73ff 0%, #50d8c5 100%);
+}
+
+.login-divider {
+  margin: 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #8ca2c9;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(116, 156, 225, 0.25);
+}
+
+.google-btn {
+  width: 100%;
+  min-height: 56px;
+  border-radius: 14px;
+  border: 1px solid rgba(109, 168, 255, 0.22);
+  background: rgba(11, 27, 67, 0.58);
+  color: #e8f0ff;
+  font-weight: 600;
+}
+
+.google-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 10px;
+}
+
+.google-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.login-privacy {
+  margin: 22px 0 0;
+  text-align: center;
+  color: #8ea5cc;
+}
+
+.home-hero {
+  border-radius: var(--radius-xl);
+  padding: 28px;
+  margin-bottom: 18px;
+}
+
+.home-hero h2 {
+  margin: 6px 0 10px;
+  font-size: clamp(1.8rem, 2.8vw, 3rem);
+}
+
+.home-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.register-shell {
+  width: min(1700px, calc(100% - 28px));
+  padding-top: 16px;
+}
+
+.register-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid rgba(109, 168, 255, 0.2);
+  border-radius: 18px;
+  padding: 14px 18px;
+  background: rgba(7, 20, 58, 0.66);
+  margin-bottom: 18px;
+}
+
+.register-brand { display: flex; gap: 12px; align-items: center; }
+.register-brand-icon {
+  width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+  background: linear-gradient(135deg, #2b68ff, #42dbc2); color: #00153d; font-weight: 800;
+}
+.register-brand strong, .register-brand small { display: block; }
+.register-brand small { color: #97acd0; }
+.register-nav { display: flex; gap: 28px; color: #c4d6f6; }
+.register-login-chip {
+  border: 1px solid rgba(109, 168, 255, 0.4);
+  border-radius: 14px;
+  padding: 12px 16px;
+  color: #dce8ff;
+  background: rgba(16, 41, 89, 0.66);
+}
+
+.register-layout {
+  display: grid;
+  grid-template-columns: 460px 1fr;
+  gap: 22px;
+  align-items: stretch;
+}
+.register-layout.single-card {
+  grid-template-columns: 1fr;
+}
+.register-promo,
+.register-form-card {
+  border: 1px solid rgba(109, 168, 255, 0.2);
+  border-radius: 22px;
+  background: radial-gradient(circle at 20% 0%, rgba(59, 127, 255, 0.18), transparent 40%), rgba(7, 20, 58, 0.72);
+  min-height: 100%;
+}
+.register-form-card.unified {
+  max-width: 100%;
+}
+.register-hero-inline {
+  border: 1px solid rgba(109, 168, 255, 0.2);
+  border-radius: 16px;
+  background: rgba(7, 20, 58, 0.55);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+}
+.register-hero-inline h2 {
+  margin: 8px 0 10px;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.05;
+}
+.register-hero-inline h2 span {
+  color: #42d0ff;
+}
+.register-hero-inline p {
+  margin: 0;
+  color: #9db3d8;
+}
+.register-promo { 
+  padding: 28px;
+  height: 100%;
+}
+.register-promo h2 { margin: 12px 0; font-size: 3rem; line-height: 1.04; }
+.register-promo h2 span { color: #42d0ff; }
+.register-promo p { color: #9db3d8; line-height: 1.6; }
+.register-promo ul { margin: 28px 0 0; padding-left: 20px; color: #d4e3ff; display: grid; gap: 12px; }
+
+.register-form-card {
+  padding: 28px;
+  height: 100%;
+}
+.register-form-card .panel-heading h2 { margin: 0 0 6px; font-size: 2.1rem; }
+.register-form-card .form-grid { gap: 18px; }
+.register-form-card input,
+.register-form-card select,
+.register-form-card textarea {
+  min-height: 56px;
+  border-radius: 12px;
+  border: 1px solid rgba(109, 168, 255, 0.25);
+  background: rgba(9, 25, 64, 0.74);
+}
+.register-form-card textarea { min-height: 74px; }
+.register-submit { min-height: 60px; font-size: 1.2rem; margin-top: 18px; }
+
 @media (max-width: 900px) {
   .dual-layout {
     grid-template-columns: 1fr;
@@ -892,4 +1207,48 @@ textarea {
   .auth-subtitle {
     font-size: 1rem;
   }
+
+  .login-card {
+    padding: 22px;
+  }
+
+  .register-layout { grid-template-columns: 1fr; }
+  .register-nav { display: none; }
+  .register-topbar { flex-wrap: wrap; }
+  .register-promo h2 { font-size: 2.1rem; }
+  .home-metrics { grid-template-columns: 1fr; }
 }
+
+.progress-meter-bar.complete {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.45);
+}
+
+:root[data-theme='light'] body {
+  background:
+    radial-gradient(circle at top left, rgba(19, 109, 240, 0.1), transparent 32%),
+    radial-gradient(circle at top right, rgba(15, 179, 141, 0.12), transparent 34%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-alt) 100%);
+}
+
+:root[data-theme='light'] .glass-card,
+:root[data-theme='light'] .glass-stat,
+:root[data-theme='light'] .stretch-item,
+:root[data-theme='light'] .track-card,
+:root[data-theme='light'] .level-row {
+  box-shadow: 0 10px 28px rgba(20, 54, 101, 0.1);
+}
+
+:root[data-theme='light'] .action-btn.secondary,
+:root[data-theme='light'] .action-btn.tertiary,
+:root[data-theme='light'] .route-pill,
+:root[data-theme='light'] .text-link {
+  background: rgba(19, 109, 240, 0.06);
+}
+
+:root[data-theme='light'] input,
+:root[data-theme='light'] select,
+:root[data-theme='light'] textarea {
+  background: #ffffff;
+}
+

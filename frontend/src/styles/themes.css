@@ -25,14 +25,14 @@
 }
 
 :root[data-theme='light'] {
-  --bg: #eef7ff;
-  --bg-alt: #dbeaf9;
-  --surface: rgba(255, 255, 255, 0.78);
-  --surface-strong: rgba(255, 255, 255, 0.96);
-  --line: rgba(35, 74, 128, 0.12);
-  --text: #10203c;
-  --muted: #4f6588;
-  --accent: #1477ff;
-  --accent-2: #00b88d;
+  --bg: #f4f8ff;
+  --bg-alt: #e7f0fb;
+  --surface: rgba(255, 255, 255, 0.9);
+  --surface-strong: #ffffff;
+  --line: rgba(24, 62, 110, 0.16);
+  --text: #0f213f;
+  --muted: #4a6286;
+  --accent: #136df0;
+  --accent-2: #0fb38d;
   --danger: #df4e75;
 }

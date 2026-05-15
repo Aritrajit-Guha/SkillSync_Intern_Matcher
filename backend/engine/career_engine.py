@@ -142,7 +142,9 @@ def score_internship_for_profile(profile, internship):
     distance_km = haversine_km(profile.get("coordinates"), internship.get("coordinates"))
     if distance_km is None:
         distance_score = 4
-    elif distance_km <= 25:
+    elif distance_km <= 20:
+        distance_score = 12
+    elif distance_km <= 40:
         distance_score = 10
     elif distance_km <= 150:
         distance_score = 7
@@ -151,12 +153,30 @@ def score_internship_for_profile(profile, internship):
     else:
         distance_score = 2
 
-    score = round(min(skill_score + location_score + qualification_score + salary_score + experience_score + distance_score, 100))
+    # ML-friendly weighted hybrid score baseline.
+    raw_score = skill_score + location_score + qualification_score + salary_score + experience_score + distance_score
+
+    # Opportunity boost: if a role is only 1-2 skills away and location is reasonably close,
+    # don't let strict preferred-location matching hide a better internship.
+    opportunity_boost = 0
+    if 1 <= len(missing) <= 2 and distance_km is not None and distance_km <= 25:
+        opportunity_boost = 5
+
+    score = round(min(raw_score + opportunity_boost, 100))
     return {
         **deepcopy(internship),
         "matchedSkills": matched,
         "missingSkills": missing,
         "score": score,
+        "scoreBreakdown": {
+            "skill": round(skill_score, 2),
+            "location": round(location_score, 2),
+            "qualification": round(qualification_score, 2),
+            "salary": round(salary_score, 2),
+            "experience": round(experience_score, 2),
+            "distance": round(distance_score, 2),
+            "opportunityBoost": round(opportunity_boost, 2),
+        },
         "isQualified": len(missing) == 0 and education_matches(profile, internship),
         "distanceKm": distance_km,
     }
@@ -164,13 +184,16 @@ def score_internship_for_profile(profile, internship):
 
 def bucket_recommendations(profile, internships, limit=5):
     scored = [score_internship_for_profile(profile, item) for item in internships]
-    recommended = [item for item in scored if education_matches(profile, item)]
+    catalog = [item for item in scored if education_matches(profile, item)]
+    recommended = list(catalog)
     qualified = [item for item in scored if item["isQualified"]]
-    stretch = [item for item in scored if 1 <= len(item["missingSkills"]) <= 3 and education_matches(profile, item)]
+    stretch = [item for item in scored if 1 <= len(item["missingSkills"]) <= 2 and education_matches(profile, item)]
+    catalog.sort(key=lambda item: (item["title"].lower(), -item["score"], item["org"].lower()))
     recommended.sort(key=lambda item: (item["score"], -len(item["missingSkills"])), reverse=True)
     qualified.sort(key=lambda item: item["score"], reverse=True)
     stretch.sort(key=lambda item: (item["score"], -len(item["missingSkills"])), reverse=True)
     return {
+        "catalog": catalog,
         "recommended": recommended[:limit],
         "qualified": qualified[:limit],
         "stretch": stretch[:limit],

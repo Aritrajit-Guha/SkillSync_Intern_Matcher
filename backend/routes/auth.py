@@ -97,6 +97,22 @@ def logout():
     return jsonify({"loggedOut": True})
 
 
+@auth_bp.route("/auth/forgot-password", methods=["POST"])
+def forgot_password():
+    data, error = _require_body()
+    if error:
+        return error
+
+    email = (data.get("email") or "").strip().lower()
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    # Privacy-safe response: do not reveal whether the email exists.
+    return jsonify({
+        "message": "If an account exists for this email, password reset steps have been sent."
+    }), 200
+
+
 @auth_bp.route("/auth/me", methods=["GET"])
 def me():
     user = find_user_by_id(session.get("user_id"))
