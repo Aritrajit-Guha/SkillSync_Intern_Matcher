@@ -93,6 +93,43 @@ def test_register_login_dashboard_flow(client):
 
     dashboard = client.get("/api/dashboard")
     assert dashboard.status_code == 200
+    assert "catalog" in dashboard.json
     assert "recommended" in dashboard.json
     assert "qualified" in dashboard.json
     assert "stretch" in dashboard.json
+
+
+def test_roadmap_requires_unlock_order(client):
+    register = client.post("/api/auth/register", json={
+        "fullName": "Roadmap Candidate",
+        "email": "roadmap@example.com",
+        "password": "secret123",
+        "phone": "9999999999",
+        "highestQualification": "graduation",
+        "skills": ["python"],
+        "preferredLocations": ["Remote - India"],
+    })
+    assert register.status_code == 201
+
+    dashboard = client.get("/api/dashboard")
+    assert dashboard.status_code == 200
+    stretch = dashboard.json["stretch"]
+    assert stretch
+
+    internship_id = stretch[0]["id"]
+    roadmap = client.get(f"/api/roadmap/{internship_id}")
+    assert roadmap.status_code == 200
+
+    tracks = roadmap.json["roadmap"]["tracks"]
+    locked_level = None
+    for track in tracks:
+        if len(track["levels"]) > 1:
+            locked_level = track["levels"][1]
+            break
+
+    assert locked_level is not None
+    assert locked_level["unlocked"] is False
+
+    complete = client.post(f"/api/roadmap/{internship_id}/complete", json={"levelId": locked_level["id"]})
+    assert complete.status_code == 400
+    assert "previous topic" in complete.json["error"]

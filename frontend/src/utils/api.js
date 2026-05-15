@@ -30,6 +30,12 @@ export const API = {
   logout() {
     return request('/auth/logout', { method: 'POST' });
   },
+  forgotPassword(email) {
+    return request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
   updateSettings(payload) {
     return request('/auth/settings', { method: 'PATCH', body: JSON.stringify(payload) });
   },

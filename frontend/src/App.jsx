@@ -75,7 +75,7 @@ const ACADEMIC_SECTIONS = [
 ];
 
 function readRoute() {
-  return window.location.pathname === '/' ? '/qualified' : window.location.pathname;
+  return window.location.pathname === '/' ? '/home' : window.location.pathname;
 }
 
 function goTo(path) {
@@ -129,8 +129,37 @@ function sanitizeProfilePayload(form) {
   };
 }
 
-function getRecommendedInternships(dashboard) {
-  return dashboard.recommended || [];
+function isRegisterFormComplete(form) {
+  if (!form.fullName?.trim() || !form.email?.trim() || !form.password?.trim() || !form.phone?.trim() || !form.address?.trim()) {
+    return false;
+  }
+  if (!form.highestQualification) return false;
+  if (!form.preferredLocations?.[0]) return false;
+  if (!(form.skills || []).length) return false;
+  const visibleSections = getVisibleAcademicSections(form.highestQualification);
+  for (const section of visibleSections) {
+    for (const field of section.fields) {
+      const value = form?.[section.key]?.[field.key];
+      if (!String(value || '').trim()) return false;
+    }
+  }
+  return true;
+}
+
+const INTERNSHIP_TABS = [
+  { key: 'top5', label: 'Top 5 internships' },
+];
+const ROADMAP_SESSION_KEY = 'active_roadmap_internship_id';
+
+function groupCatalogByRole(items) {
+  return (items || []).reduce((groups, internship) => {
+    const role = internship.title || 'Other internships';
+    if (!groups[role]) {
+      groups[role] = [];
+    }
+    groups[role].push(internship);
+    return groups;
+  }, {});
 }
 
 function getNextUnlockedLevel(roadmap) {
@@ -158,6 +187,13 @@ function getRoadmapProgress(roadmap) {
   };
 }
 
+function getXpBadge(progress) {
+  const xp = progress.completed * 10;
+  if (xp >= 120) return { xp, badge: 'Gold' };
+  if (xp >= 60) return { xp, badge: 'Silver' };
+  return { xp, badge: 'Bronze' };
+}
+
 function renderAcademicSections(form, bindNested) {
   return getVisibleAcademicSections(form.highestQualification).map(section => (
     <div className="form-section-card" key={section.key}>
@@ -168,7 +204,7 @@ function renderAcademicSections(form, bindNested) {
       <div className="form-grid compact">
         {section.fields.map(field => (
           <label className="field block" key={`${section.key}-${field.key}`}>
-            <span>{field.label}</span>
+            <span>{field.label} *</span>
             <input
               value={form[section.key]?.[field.key] || ''}
               onChange={event => bindNested(section.key, field.key, event.target.value)}
@@ -233,12 +269,17 @@ function DashboardCard({ internship, actionLabel, onAction, actionClass = 'prima
       )}
 
       {children}
+      {internship.scoreBreakdown && (
+        <p className="muted-copy">
+          Score factors: skill {Math.round(internship.scoreBreakdown.skill)}, location {Math.round(internship.scoreBreakdown.location)}, distance {Math.round(internship.scoreBreakdown.distance)}, boost {Math.round(internship.scoreBreakdown.opportunityBoost)}
+        </p>
+      )}
       <button className={`action-btn ${actionClass}`} onClick={onAction} type="button">{actionLabel}</button>
     </article>
   );
 }
 
-function AuthScreen({ mode, form, setForm, onSubmit, onSwitch, loading }) {
+function AuthScreen({ mode, form, setForm, onSubmit, onSwitch, loading, onUseCurrentLocation }) {
   const subtitle = mode === 'login'
     ? 'Pick up where you left off and refresh your recommendations.'
     : 'Complete one professional registration form, choose one location, and let the portal adapt based on your education and skills.';
@@ -273,139 +314,234 @@ function AuthScreen({ mode, form, setForm, onSubmit, onSwitch, loading }) {
 
   const selectedLocation = form.preferredLocations?.[0] || '';
 
-  return (
-    <main className="auth-shell">
-      <section className="auth-panel glass-card auth-panel-full">
-        <div className="panel-heading auth-panel-head">
-          <div>
-            <p className="eyebrow">{mode === 'login' ? 'Welcome back' : 'Professional registration'}</p>
-            <h2>{mode === 'login' ? 'Login' : 'Register'}</h2>
-            <p className="auth-subtitle auth-subtitle-compact">{subtitle}</p>
-          </div>
-          <button className="text-link" onClick={onSwitch} type="button">
-            {mode === 'login' ? 'New here? Register' : 'Already registered? Login'}
-          </button>
-        </div>
+  async function handleForgotPassword() {
+    if (!form.email?.trim()) {
+      showToast('Enter your email first, then click Forgot password.');
+      return;
+    }
+    try {
+      const result = await API.forgotPassword(form.email.trim());
+      showToast(result.message || 'Reset instructions sent.');
+    } catch (error) {
+      showToast(error.message || 'Could not start password reset.');
+    }
+  }
 
-        <div className="form-grid">
-          {mode === 'register' && (
+  function handleGoogleContinue() {
+    window.open('https://accounts.google.com/signin', '_blank', 'noopener,noreferrer');
+    showToast('Google sign-in opened. OAuth integration can be connected next.');
+  }
+
+  if (mode === 'login') {
+    return (
+      <main className="auth-shell login-shell">
+        <section className="login-card">
+          <div className="login-top-cta">
+            <span>New here?</span>
+            <button className="register-btn ghost" onClick={onSwitch} type="button">
+              Create an account <span aria-hidden="true">&rarr;</span>
+            </button>
+          </div>
+
+          <header className="login-header">
+            <h1>Login</h1>
+            <p>Sign in to your account to continue</p>
+          </header>
+
+          <div className="login-form">
+            <label className="field block login-field">
+              <span>Email *</span>
+              <div className="input-shell">
+                <span className="input-icon" aria-hidden="true">&#9993;</span>
+                <input
+                  type="email"
+                  placeholder="Enter your email address"
+                  value={form.email}
+                  onChange={event => setForm(prev => ({ ...prev, email: event.target.value }))}
+                />
+              </div>
+            </label>
+
+            <label className="field block login-field">
+              <span>Password *</span>
+              <div className="input-shell">
+                <span className="input-icon" aria-hidden="true">&#128274;</span>
+                <input
+                  type="password"
+                  placeholder="Enter your password"
+                  value={form.password}
+                  onChange={event => setForm(prev => ({ ...prev, password: event.target.value }))}
+                />
+                <span className="input-icon right" aria-hidden="true">&#9675;</span>
+              </div>
+            </label>
+
+            <div className="login-row">
+              <label className="remember">
+                <input type="checkbox" defaultChecked />
+                <span>Remember me</span>
+              </label>
+              <button className="text-link" type="button" onClick={handleForgotPassword}>Forgot password?</button>
+            </div>
+          </div>
+
+          <button className="login-primary-btn" type="button" onClick={onSubmit} disabled={loading}>
+            {loading ? 'Please wait...' : 'Log In  ->'}
+          </button>
+
+          <div className="login-divider"><span>or</span></div>
+
+          <button className="google-btn" type="button" onClick={handleGoogleContinue}>
+            <span className="google-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="img" focusable="false" aria-hidden="true">
+                <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.55-.2-2.27H12v4.3h6.45a5.52 5.52 0 0 1-2.4 3.63v3.01h3.88c2.27-2.09 3.56-5.17 3.56-8.67z"/>
+                <path fill="#34A853" d="M12 24c3.24 0 5.95-1.07 7.93-2.9l-3.88-3.01c-1.08.72-2.45 1.14-4.05 1.14-3.11 0-5.74-2.1-6.68-4.93H1.31v3.1A12 12 0 0 0 12 24z"/>
+                <path fill="#FBBC05" d="M5.32 14.3A7.2 7.2 0 0 1 4.95 12c0-.8.14-1.57.37-2.3V6.6H1.31A12 12 0 0 0 0 12c0 1.93.46 3.75 1.31 5.4l4.01-3.1z"/>
+                <path fill="#EA4335" d="M12 4.77c1.76 0 3.34.6 4.58 1.76l3.43-3.43C17.94 1.16 15.24 0 12 0A12 12 0 0 0 1.31 6.6l4.01 3.1c.94-2.83 3.57-4.93 6.68-4.93z"/>
+              </svg>
+            </span>
+            Continue with Google
+          </button>
+
+          <p className="login-privacy">We respect your privacy and keep your data safe.</p>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="auth-shell register-shell">
+      <header className="register-topbar">
+        <div className="register-brand">
+          <div className="register-brand-icon">P</div>
+          <div>
+            <strong>PM Internship Scheme</strong>
+            <small>Empowering Future Professionals</small>
+          </div>
+        </div>
+        <nav className="register-nav">
+          <span>Home</span><span>Internships</span><span>Roadmap</span><span>Profile</span><span>Settings</span>
+        </nav>
+        <button className="register-login-chip" onClick={onSwitch} type="button">Already have an account? Login</button>
+      </header>
+
+      <section className="register-layout single-card">
+        <section className="register-form-card unified">
+          <div className="register-hero-inline">
+            <p className="eyebrow">Create your account</p>
+            <h2>Start Your <span>Internship Journey</span></h2>
+            <p>{subtitle}</p>
+          </div>
+          <div className="panel-heading">
+            <h2>Personal Information</h2>
+            <p>Tell us about yourself</p>
+          </div>
+          <div className="form-grid">
             <label className="field block">
-              <span>Full name</span>
+              <span>Full name *</span>
               <input value={form.fullName} onChange={event => setForm(prev => ({ ...prev, fullName: event.target.value }))} />
             </label>
-          )}
-
-          <label className="field block">
-            <span>Email</span>
-            <input type="email" value={form.email} onChange={event => setForm(prev => ({ ...prev, email: event.target.value }))} />
-          </label>
-
-          <label className="field block">
-            <span>Password</span>
-            <input type="password" value={form.password} onChange={event => setForm(prev => ({ ...prev, password: event.target.value }))} />
-          </label>
-
-          {mode === 'register' && (
-            <>
-              <label className="field block">
-                <span>Phone number</span>
-                <input value={form.phone} onChange={event => setForm(prev => ({ ...prev, phone: event.target.value }))} />
-              </label>
-
-              <label className="field block full">
-                <span>Address</span>
-                <textarea rows="3" value={form.address} onChange={event => setForm(prev => ({ ...prev, address: event.target.value }))} />
-              </label>
-
-              <label className="field block">
-                <span>Highest qualification</span>
-                <select value={form.highestQualification} onChange={event => setForm(prev => ({ ...prev, highestQualification: event.target.value }))}>
-                  {QUALIFICATIONS.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
-                </select>
-              </label>
-
-              <label className="field block">
-                <span>Profile photo</span>
-                <input type="file" accept="image/*" onChange={handlePhoto} />
-              </label>
-
-              <div className="field full">
-                <span className="section-title">Registration summary</span>
-                <p className="helper-copy">The form changes as soon as you choose the highest qualification, and you can select only one preferred location.</p>
-                <ProfileStrength form={form} />
+            <label className="field block">
+              <span>Email *</span>
+              <input type="email" value={form.email} onChange={event => setForm(prev => ({ ...prev, email: event.target.value }))} />
+            </label>
+            <label className="field block">
+              <span>Password *</span>
+              <input type="password" value={form.password} onChange={event => setForm(prev => ({ ...prev, password: event.target.value }))} />
+            </label>
+            <label className="field block">
+              <span>Phone number *</span>
+              <input value={form.phone} onChange={event => setForm(prev => ({ ...prev, phone: event.target.value }))} />
+            </label>
+            <label className="field block full">
+              <span>Address *</span>
+              <textarea rows="3" value={form.address} onChange={event => setForm(prev => ({ ...prev, address: event.target.value }))} />
+            </label>
+            <label className="field block">
+              <span>Highest qualification *</span>
+              <select value={form.highestQualification} onChange={event => setForm(prev => ({ ...prev, highestQualification: event.target.value }))}>
+                {QUALIFICATIONS.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+              </select>
+            </label>
+            <label className="field block">
+              <span>Profile photo</span>
+              <input type="file" accept="image/*" onChange={handlePhoto} />
+            </label>
+            <div className="field block">
+              <span>Location coordinates</span>
+              <button className="action-btn secondary" type="button" onClick={() => onUseCurrentLocation?.('register')}>
+                Use my current location
+              </button>
+              <p className="helper-copy">
+                {form.coordinates?.lat && form.coordinates?.lng
+                  ? `Captured: ${form.coordinates.lat}, ${form.coordinates.lng}`
+                  : 'Location not captured yet.'}
+              </p>
+            </div>
+            <div className="field full">
+              <span className="section-title">Registration summary</span>
+              <p className="helper-copy">The form changes as soon as you choose the highest qualification, and you can select only one preferred location.</p>
+              <ProfileStrength form={form} />
+            </div>
+            <div className="field full">
+              <span className="section-title">Academic details</span>
+              <p className="helper-copy">We only ask for the academic sections needed for the selected education level.</p>
+              <div className="academic-section-stack">{renderAcademicSections(form, bindNested)}</div>
+            </div>
+            <div className="field full">
+              <span className="section-title">Preferred location *</span>
+              <p className="helper-copy">Choose one location only. This will influence the internships shown in the portal.</p>
+              <div className="location-grid">
+                {LOCATIONS.map(location => (
+                  <button key={location} className={`location-card ${selectedLocation === location ? 'selected' : ''}`} type="button" onClick={() => selectLocation(location)}>
+                    <strong>{location}</strong>
+                    <span>{selectedLocation === location ? 'Selected' : 'Set as preferred location'}</span>
+                  </button>
+                ))}
               </div>
-
-              <div className="field full">
-                <span className="section-title">Academic details</span>
-                <p className="helper-copy">We only ask for the academic sections needed for the selected education level.</p>
-                <div className="academic-section-stack">
-                  {renderAcademicSections(form, bindNested)}
-                </div>
+            </div>
+            <div className="field full">
+              <span className="section-title">Skills *</span>
+              <p className="helper-copy">Select the skills you already have. The portal will use these skills to rank five internships for you.</p>
+              <div className="chip-row large">
+                {SKILL_OPTIONS.map(skill => (
+                  <button key={skill} className={`skill-chip ${form.skills.includes(skill) ? 'selected' : ''}`} type="button" onClick={() => toggleSkill(skill)}>
+                    {labelForSkill(skill)}
+                  </button>
+                ))}
               </div>
+            </div>
+          </div>
 
-              <div className="field full">
-                <span className="section-title">Preferred location</span>
-                <p className="helper-copy">Choose one location only. This will influence the internships shown in the portal.</p>
-                <div className="location-grid">
-                  {LOCATIONS.map(location => (
-                    <button
-                      key={location}
-                      className={`location-card ${selectedLocation === location ? 'selected' : ''}`}
-                      type="button"
-                      onClick={() => selectLocation(location)}
-                    >
-                      <strong>{location}</strong>
-                      <span>{selectedLocation === location ? 'Selected' : 'Set as preferred location'}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="field full">
-                <span className="section-title">Skills</span>
-                <p className="helper-copy">Select the skills you already have. The portal will use these skills to rank five internships for you.</p>
-                <div className="chip-row large">
-                  {SKILL_OPTIONS.map(skill => (
-                    <button
-                      key={skill}
-                      className={`skill-chip ${form.skills.includes(skill) ? 'selected' : ''}`}
-                      type="button"
-                      onClick={() => toggleSkill(skill)}
-                    >
-                      {labelForSkill(skill)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        <button className="action-btn primary wide" type="button" onClick={onSubmit} disabled={loading}>
-          {loading ? 'Please wait...' : mode === 'login' ? 'Log In' : 'Register & Enter Workspace'}
-        </button>
+          <button className="action-btn primary wide register-submit" type="button" onClick={onSubmit} disabled={loading}>
+            {loading ? 'Please wait...' : 'Register & Enter Workspace'}
+          </button>
+        </section>
       </section>
     </main>
   );
 }
-
 export default function App() {
   const [route, setRoute] = useState(readRoute());
   const [authLoading, setAuthLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [user, setUser] = useState(null);
-  const [dashboard, setDashboard] = useState({ recommended: [], qualified: [], stretch: [], applications: [] });
+  const [dashboard, setDashboard] = useState({ catalog: [], recommended: [], qualified: [], stretch: [], applications: [] });
   const [registerForm, setRegisterForm] = useState(emptyRegisterForm);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [profileDraft, setProfileDraft] = useState(null);
   const [roadmapData, setRoadmapData] = useState(null);
   const [selectedStretch, setSelectedStretch] = useState(null);
+  const [activeInternshipTab, setActiveInternshipTab] = useState('top5');
   const [menuOpen, setMenuOpen] = useState(false);
   const [applyState, setApplyState] = useState({});
   const [applyModalInternship, setApplyModalInternship] = useState(null);
+  const [topFiveInternshipIds, setTopFiveInternshipIds] = useState([]);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+  const [homeSlide, setHomeSlide] = useState(0);
+  const [activeRoadmapInternshipId, setActiveRoadmapInternshipId] = useState(() => Storage.get(ROADMAP_SESSION_KEY, null));
   const authMode = route === '/register' ? 'register' : 'login';
 
   useEffect(() => {
@@ -430,7 +566,7 @@ export default function App() {
           setUser(data.user);
           setProfileDraft(data.user);
           if (currentRoute === '/login' || currentRoute === '/register') {
-            goTo('/qualified');
+            goTo('/home');
           }
         } else if (!['/login', '/register'].includes(currentRoute)) {
           goTo('/login');
@@ -456,11 +592,50 @@ export default function App() {
     loadDashboard();
   }, [user?.id]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function restoreRoadmapFromSession(internshipId) {
+      try {
+        const data = await API.getRoadmap(internshipId);
+        if (cancelled) return;
+        setRoadmapData(data);
+        setSelectedStretch(internshipId);
+        setChatMessages([
+          {
+            role: 'assistant',
+            text: `I am your roadmap copilot for ${data.internship.title} at ${data.internship.org}. Ask what to learn first, ask for a weekly plan, or say "tick next mission" after you finish a level.`,
+          },
+        ]);
+      } catch {
+        if (cancelled) return;
+        Storage.remove(ROADMAP_SESSION_KEY);
+        showToast('Open a missing-skill internship first to enter the roadmap page.');
+        goTo('/home');
+      }
+    }
+
+    if (route === '/upskill' && !roadmapData) {
+      const savedInternshipId = Storage.get(ROADMAP_SESSION_KEY, null);
+      if (!savedInternshipId) {
+        showToast('Open a missing-skill internship first to enter the roadmap page.');
+        goTo('/home');
+      } else {
+        restoreRoadmapFromSession(savedInternshipId);
+      }
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [route, roadmapData]);
+
   function navigate(path) {
     if (path !== '/upskill') {
       setRoadmapData(null);
       setChatMessages([]);
       setChatInput('');
+      Storage.remove(ROADMAP_SESSION_KEY);
     }
     goTo(path);
   }
@@ -469,6 +644,17 @@ export default function App() {
     try {
       const data = await API.dashboard();
       setDashboard(data);
+      setTopFiveInternshipIds(prev => {
+        if (prev.length) return prev;
+        const fromRecommended = (data.recommended || []).map(item => item.id);
+        if (fromRecommended.length) return fromRecommended.slice(0, 5);
+        return [...(data.qualified || []), ...(data.stretch || [])].map(item => item.id).slice(0, 5);
+      });
+      const stretchIds = new Set((data.stretch || []).map(item => item.id));
+      if (activeRoadmapInternshipId && !stretchIds.has(activeRoadmapInternshipId)) {
+        setActiveRoadmapInternshipId(null);
+        Storage.remove(ROADMAP_SESSION_KEY);
+      }
       setUser(prev => (prev ? { ...prev, ...data.profile } : data.profile));
       setProfileDraft(data.profile);
       setSelectedStretch(prev => {
@@ -482,6 +668,10 @@ export default function App() {
   }
 
   async function handleRegister() {
+    if (!isRegisterFormComplete(registerForm)) {
+      showToast('Please fill all mandatory (*) fields before registering.');
+      return;
+    }
     setSubmitLoading(true);
     try {
       const payload = sanitizeProfilePayload(registerForm);
@@ -490,7 +680,7 @@ export default function App() {
       setRegisterForm(emptyRegisterForm());
       fireConfetti(32);
       showToast('Profile created');
-      navigate('/qualified');
+      navigate('/home');
     } catch (error) {
       showToast(error.message);
     } finally {
@@ -499,13 +689,17 @@ export default function App() {
   }
 
   async function handleLogin() {
+    if (!loginForm.email?.trim() || !loginForm.password?.trim()) {
+      showToast('Please fill all mandatory (*) fields before login.');
+      return;
+    }
     setSubmitLoading(true);
     try {
       const data = await API.login(loginForm);
       setUser(data.user);
       setProfileDraft(data.user);
       showToast('Welcome back');
-      navigate('/qualified');
+      navigate('/home');
     } catch (error) {
       showToast(error.message);
     } finally {
@@ -516,7 +710,7 @@ export default function App() {
   async function handleLogout() {
     await API.logout().catch(() => null);
     setUser(null);
-    setDashboard({ recommended: [], qualified: [], stretch: [], applications: [] });
+    setDashboard({ catalog: [], recommended: [], qualified: [], stretch: [], applications: [] });
     navigate('/login');
   }
 
@@ -533,11 +727,11 @@ export default function App() {
   }
 
   async function handleLoadRoadmap(internshipId) {
-    const internship = [
-      ...(dashboard.recommended || []),
-      ...(dashboard.qualified || []),
-      ...(dashboard.stretch || []),
-    ].find(item => item.id === internshipId);
+    const internship = findInternshipById(internshipId);
+    if (activeRoadmapInternshipId && activeRoadmapInternshipId !== internshipId) {
+      showToast('Complete your active roadmap first before opening another skill-gap internship.');
+      return;
+    }
 
     if (internship && !internship.missingSkills?.length) {
       showToast('This internship is already ready to apply. No roadmap is needed.');
@@ -549,6 +743,8 @@ export default function App() {
     try {
       const data = await API.getRoadmap(internshipId);
       setRoadmapData(data);
+      setActiveRoadmapInternshipId(internshipId);
+      Storage.set(ROADMAP_SESSION_KEY, internshipId);
       setChatMessages([
         {
           role: 'assistant',
@@ -729,6 +925,118 @@ export default function App() {
     }));
   }
 
+  function fetchBrowserLocation(target = 'register') {
+    if (!navigator.geolocation) {
+      showToast('Geolocation is not supported on this browser.');
+      return;
+    }
+    if (!window.isSecureContext) {
+      showToast('Location access needs HTTPS (or localhost). Open this site in a secure context.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const coordinates = {
+          lat: Number(position.coords.latitude.toFixed(6)),
+          lng: Number(position.coords.longitude.toFixed(6)),
+        };
+        if (target === 'register') {
+          setRegisterForm(prev => ({ ...prev, coordinates }));
+        } else {
+          setProfileDraft(prev => ({ ...(prev || {}), coordinates }));
+        }
+        showToast('Current location captured.');
+      },
+      error => {
+        if (error.code === error.PERMISSION_DENIED) {
+          showToast('Location permission denied. Allow location access in your browser settings.');
+          return;
+        }
+        if (error.code === error.POSITION_UNAVAILABLE) {
+          showToast('Location is unavailable right now. Check GPS/network and try again.');
+          return;
+        }
+        if (error.code === error.TIMEOUT) {
+          showToast('Location request timed out. Try again in a few seconds.');
+          return;
+        }
+        showToast('Unable to fetch location. Please try again.');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 120000 }
+    );
+  }
+
+  function findInternshipById(internshipId) {
+    return [
+      ...(dashboard.catalog || []),
+      ...(dashboard.recommended || []),
+      ...(dashboard.qualified || []),
+      ...(dashboard.stretch || []),
+    ].find(item => item.id === internshipId);
+  }
+
+  function renderInternshipCard(internship, allowRoadmap = false) {
+    const roadmapSolvedForThisInternship = Boolean(
+      roadmapCompleted
+      && activeRoadmapInternshipId
+      && internship.id === activeRoadmapInternshipId
+    );
+    const hasGap = !roadmapSolvedForThisInternship && internship.missingSkills?.length > 0;
+    const isApplied = Boolean(applicationsById[internship.id]);
+    const isAnotherRoadmapLocked = Boolean(
+      activeRoadmapInternshipId && activeRoadmapInternshipId !== internship.id
+    );
+    const canOpenRoadmap = hasGap && allowRoadmap && !isAnotherRoadmapLocked;
+    return (
+      <DashboardCard
+        key={internship.id}
+        internship={internship}
+        actionLabel={
+          isApplied
+            ? 'Applied'
+            : canOpenRoadmap
+              ? 'Learn missing skills'
+              : isAnotherRoadmapLocked && hasGap && allowRoadmap
+                ? 'Roadmap locked'
+              : 'Apply now'
+        }
+        onAction={() => {
+          if (isApplied) return;
+          if (canOpenRoadmap) {
+            handleLoadRoadmap(internship.id);
+            return;
+          }
+          if (isAnotherRoadmapLocked && hasGap && allowRoadmap) {
+            showToast('Another internship roadmap is active. Complete it first to unlock this roadmap.');
+            return;
+          }
+          if (hasGap && !allowRoadmap) {
+            showToast('Open this internship from Better opportunities tab to start roadmap learning.');
+            return;
+          }
+          openApplyModal(internship);
+        }}
+        actionClass={isApplied || (isAnotherRoadmapLocked && hasGap && allowRoadmap) ? 'disabled' : canOpenRoadmap ? 'secondary' : 'primary'}
+      >
+        {isApplied && (
+          <p className="success-copy">Submitted on {new Date(applicationsById[internship.id].applied_at).toLocaleDateString('en-IN')}</p>
+        )}
+      </DashboardCard>
+    );
+  }
+
+  const homeSlides = [
+    'AI-powered internship matching based on skills, qualification, and location.',
+    'Track roadmap progress and continue learning exactly where you left off.',
+    'Discover qualified roles and better opportunities across multiple domains.',
+  ];
+
+  useEffect(() => {
+    if (route !== '/home') return undefined;
+    const id = setInterval(() => setHomeSlide(prev => (prev + 1) % 3), 3500);
+    return () => clearInterval(id);
+  }, [route]);
+
   if (authLoading) {
     return <div className="screen-loader">Loading workspace...</div>;
   }
@@ -742,13 +1050,18 @@ export default function App() {
         onSubmit={authMode === 'login' ? handleLogin : handleRegister}
         onSwitch={() => navigate(authMode === 'login' ? '/register' : '/login')}
         loading={submitLoading}
+        onUseCurrentLocation={fetchBrowserLocation}
       />
     );
   }
 
   const applicationsById = Object.fromEntries(dashboard.applications.map(item => [item.internship_id, item]));
-  const recommendedInternships = getRecommendedInternships(dashboard);
   const roadmapProgress = getRoadmapProgress(roadmapData?.roadmap);
+  const roadmapBadge = getXpBadge(roadmapProgress);
+  const roadmapCompleted = Boolean(
+    roadmapData?.internship && (roadmapProgress.total === 0 || roadmapProgress.completed === roadmapProgress.total)
+  );
+  const roadmapProgressPercent = roadmapCompleted ? 100 : roadmapProgress.percent;
 
   return (
     <div className="app-shell">
@@ -800,112 +1113,107 @@ export default function App() {
           <div className="hero-actions">
             <button className="action-btn secondary" type="button" onClick={handleRefresh}>Refresh Lists</button>
             <div className="glass-stat compact">
-              <strong>{recommendedInternships.length}</strong>
-              <span>top recommendations</span>
+              <strong>{dashboard.qualified.length}</strong>
+              <span>qualified now</span>
             </div>
             <div className="glass-stat compact">
               <strong>{dashboard.stretch.length}</strong>
-              <span>roadmap targets</span>
+              <span>better opportunities</span>
             </div>
           </div>
         </section>
+
+        {route === '/home' && (
+          <section className="glass-card home-hero">
+            <p className="eyebrow">Platform overview</p>
+            <h2>Welcome to PM Internship Engine</h2>
+            <p>{homeSlides[homeSlide]}</p>
+            <div className="home-metrics">
+              <div className="summary-pill"><strong>{dashboard.catalog.length}</strong><span>Total internships</span></div>
+              <div className="summary-pill"><strong>{new Set((dashboard.catalog || []).map(item => item.title)).size}</strong><span>Domains / roles</span></div>
+              <div className="summary-pill"><strong>{dashboard.qualified.length}</strong><span>Best qualified now</span></div>
+            </div>
+            <button className="action-btn primary" type="button" onClick={() => navigate('/qualified')}>Explore internships</button>
+          </section>
+        )}
 
         {route === '/qualified' && (
           <section className="page-grid">
             <div className="panel-stack">
               <div className="panel-heading">
-                <h2>Top 5 internships based on your skills</h2>
+                <h2>Internship discovery</h2>
                 <p>
-                  Apply-ready roles stay ready to apply. Roles with a skill gap switch to roadmap mode so you only see a learning plan when it is actually required.
+                  This page shows only your fixed top 5 internships. If any of these has a skill gap, complete its roadmap and then apply from the same card.
                 </p>
               </div>
 
               <div className="summary-strip">
                 <div className="summary-pill">
-                  <strong>{dashboard.qualified.length}</strong>
-                  <span>apply-ready internships</span>
-                </div>
-                <div className="summary-pill">
-                  <strong>{dashboard.stretch.length}</strong>
-                  <span>internships needing roadmap</span>
-                </div>
-                <div className="summary-pill">
-                  <strong>{user.preferredLocations?.[0] || 'No location selected'}</strong>
-                  <span>current location filter</span>
+                  <strong>{topFiveInternshipIds.length}</strong>
+                  <span>fixed top internships on this page</span>
                 </div>
               </div>
 
-              {recommendedInternships.length > 0 ? (
-                <div className="card-grid">
-                  {recommendedInternships.map(internship => {
-                    const hasGap = internship.missingSkills?.length > 0;
-                    const isApplied = Boolean(applicationsById[internship.id]);
-                    return (
-                      <DashboardCard
-                        key={internship.id}
-                        internship={internship}
-                        actionLabel={
-                          isApplied
-                            ? 'Applied'
-                            : hasGap
-                              ? 'Open roadmap'
-                              : 'Apply now'
-                        }
-                        onAction={() => {
-                          if (isApplied) return;
-                          if (hasGap) {
-                            handleLoadRoadmap(internship.id);
-                            return;
-                          }
-                          openApplyModal(internship);
-                        }}
-                        actionClass={isApplied ? 'disabled' : hasGap ? 'secondary' : 'primary'}
-                      >
-                        {isApplied && (
-                          <p className="success-copy">Submitted on {new Date(applicationsById[internship.id].applied_at).toLocaleDateString('en-IN')}</p>
-                        )}
-                      </DashboardCard>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="empty-state glass-card">
-                  <h3>No internships match this profile yet</h3>
-                  <p>Try adding more skills or changing the preferred location to unlock stronger results.</p>
-                </div>
+              <div className="internship-tabs" role="tablist" aria-label="Internship views">
+                {INTERNSHIP_TABS.map(tab => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    role="tab"
+                    className={`internship-tab ${activeInternshipTab === tab.key ? 'active' : ''}`}
+                    aria-selected={activeInternshipTab === tab.key}
+                    onClick={() => setActiveInternshipTab(tab.key)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {activeInternshipTab === 'top5' && (
+                topFiveInternshipIds.length > 0 ? (
+                  <div className="card-grid">
+                    {topFiveInternshipIds
+                      .map(id => findInternshipById(id))
+                      .filter(Boolean)
+                      .map(item => renderInternshipCard(item, true))}
+                  </div>
+                ) : (
+                  <div className="empty-state glass-card">
+                    <h3>No top internships yet</h3>
+                    <p>Refresh recommendations to generate your top 5 internships.</p>
+                  </div>
+                )
               )}
             </div>
           </section>
         )}
 
-        {route === '/upskill' && (
-          <section className="dual-layout">
+        {route === '/upskill' && roadmapData && (
+          <section className="dual-layout roadmap-page">
             <div className="stretch-list glass-card">
               <div className="panel-heading">
                 <h2>Skill-gap roadmap arena</h2>
-                <p>Only internships with at least one missing skill appear here.</p>
+                <p>Only the currently active internship roadmap is shown here.</p>
               </div>
-              {dashboard.stretch.length === 0 ? (
+              {!roadmapData?.internship ? (
                 <div className="empty-state">
-                  <h3>No roadmap needed right now</h3>
-                  <p>Your current profile is already aligned with the available apply-ready internships.</p>
+                  <h3>No active roadmap selected</h3>
+                  <p>Open one skill-gap internship from Better opportunities to start learning.</p>
                 </div>
               ) : (
                 <div className="stack-list">
-                  {dashboard.stretch.map(internship => (
-                    <button
-                      key={internship.id}
-                      className={`stretch-item ${selectedStretch === internship.id ? 'active' : ''}`}
-                      type="button"
-                      onClick={() => handleLoadRoadmap(internship.id)}
-                    >
-                      <span>
-                        <strong>{internship.title}</strong>
-                        <small>{internship.org}</small>
-                      </span>
-                      <em>{internship.missingSkills.length} skills missing</em>
-                    </button>
-                  ))}
+                  <button
+                    key={roadmapData.internship.id}
+                    className="stretch-item active"
+                    type="button"
+                    onClick={() => null}
+                  >
+                    <span>
+                      <strong>{roadmapData.internship.title}</strong>
+                      <small>{roadmapData.internship.org}</small>
+                    </span>
+                    <em>{roadmapData.internship.missingSkills?.length || 0} skills missing</em>
+                  </button>
                 </div>
               )}
             </div>
@@ -921,31 +1229,42 @@ export default function App() {
                 <>
                   <div className="arena-top">
                     <div>
-                      <p className="eyebrow">Roadmap Arena</p>
+                      <p className="eyebrow">Roadmap page</p>
                       <h2>{roadmapData.internship.title}</h2>
                       <p>{roadmapData.internship.org} · {roadmapData.internship.location}</p>
                     </div>
-                    <button className="action-btn secondary" type="button" onClick={handleRefresh}>Recalculate buckets</button>
+                    <div className="hero-actions">
+                      <button
+                        className={`action-btn ${roadmapCompleted ? 'primary' : 'disabled'}`}
+                        type="button"
+                        onClick={() => roadmapCompleted && openApplyModal(roadmapData.internship)}
+                        disabled={!roadmapCompleted}
+                      >
+                        Apply now
+                      </button>
+                      <button className="action-btn secondary" type="button" onClick={() => navigate('/qualified')}>Back to internships</button>
+                    </div>
                   </div>
 
                   <div className="gamification-panel">
                     <div>
                       <p className="eyebrow">Gamification bar</p>
-                      <h3>{roadmapProgress.completed} of {roadmapProgress.total} missions completed</h3>
+                      <h3>{roadmapProgress.completed} of {roadmapProgress.total} topics completed</h3>
+                      <p className="muted-copy">XP: {roadmapBadge.xp} · Badge: {roadmapBadge.badge}</p>
                     </div>
                     <div className="progress-meter">
-                      <div className="progress-meter-bar" style={{ width: `${roadmapProgress.percent}%` }} />
+                      <div className={`progress-meter-bar ${roadmapCompleted ? 'complete' : ''}`} style={{ width: `${roadmapProgressPercent}%` }} />
                     </div>
-                    <p className="muted-copy">Ask the chatbot for the next step, then tick the completed mission to move this bar forward.</p>
+                    <p className="muted-copy">Progress stays saved, so next time you open this roadmap you continue from the same point.</p>
                   </div>
 
                   <div className="chatbot-panel chatbot-panel-top">
                     <div className="chatbot-panel-head">
                       <div className="panel-heading compact">
                         <h2>AI Roadmap Copilot</h2>
-                        <p>The chatbot focuses only on the missing skills for this internship.</p>
+                        <p>This page opens only from internships that still have missing skills.</p>
                       </div>
-                      <div className="chatbot-badge">Roadmap chat</div>
+                      <div className="chatbot-badge">Focused roadmap</div>
                     </div>
                     <div className="chat-shell">
                       <div className="chat-log">
@@ -980,7 +1299,7 @@ export default function App() {
                         <input
                           value={chatInput}
                           onChange={event => setChatInput(event.target.value)}
-                          placeholder='Ask: what should I learn first? or type "tick next mission"'
+                          placeholder='Ask what to learn first, or type "tick next mission"'
                           onKeyDown={event => {
                             if (event.key === 'Enter' && !event.shiftKey) {
                               event.preventDefault();
@@ -1017,15 +1336,18 @@ export default function App() {
                                 <div className="level-row-body">
                                   <span>{level.label}</span>
                                   <strong>{level.topic}</strong>
+                                  {!level.completed && !level.unlocked && (
+                                    <small>Locked until the previous topic is completed.</small>
+                                  )}
                                 </div>
                                 <button
                                   type="button"
                                   className={`mission-check ${level.completed ? 'checked' : ''}`}
                                   disabled={!level.unlocked || level.completed}
                                   onClick={() => completeLevel(level.id)}
-                                  aria-label={level.completed ? `${level.topic} completed` : `Tick ${level.topic} as complete`}
+                                  aria-label={level.completed ? `${level.topic} completed` : level.unlocked ? `Mark ${level.topic} as complete` : `${level.topic} is locked`}
                                 >
-                                  {level.completed ? 'Ticked' : 'Tick mission'}
+                                  {level.completed ? 'Completed' : level.unlocked ? 'Mark as complete' : 'Locked'}
                                 </button>
                               </div>
                             ))}
@@ -1056,7 +1378,7 @@ export default function App() {
 
             <div className="form-grid">
               <label className="field block">
-                <span>Full name</span>
+                <span>Full name *</span>
                 <input value={profileDraft.fullName || ''} onChange={event => updateProfileField('fullName', event.target.value)} />
               </label>
               <label className="field block">
@@ -1075,6 +1397,9 @@ export default function App() {
               </label>
               <div className="field block full">
                 <span>Preferred location</span>
+                <button className="action-btn secondary" type="button" onClick={() => fetchBrowserLocation('profile')}>
+                  Refresh current location for distance ranking
+                </button>
                 <div className="location-grid profile-location-grid">
                   {LOCATIONS.map(location => (
                     <button
@@ -1159,7 +1484,7 @@ export default function App() {
                 />
               </label>
               <label className="field block">
-                <span>Email ID</span>
+                <span>Email ID *</span>
                 <input
                   type="email"
                   value={applyState[applyModalInternship.id]?.email || ''}
@@ -1191,7 +1516,7 @@ export default function App() {
                 />
               </label>
               <label className="field block full">
-                <span>Upload resume</span>
+                <span>Upload resume *</span>
                 <input type="file" accept=".pdf,.doc,.docx" onChange={event => onResumeSelect(applyModalInternship.id, event.target.files?.[0])} />
                 {applyState[applyModalInternship.id]?.resumeName && (
                   <p className="muted-copy resume-label">Selected: {applyState[applyModalInternship.id].resumeName}</p>
@@ -1239,3 +1564,7 @@ export default function App() {
     </div>
   );
 }
+
+
+
+

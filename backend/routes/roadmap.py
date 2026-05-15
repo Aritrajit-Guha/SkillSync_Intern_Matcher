@@ -111,6 +111,12 @@ def get_roadmap(internship_id):
     if not internship:
         return jsonify({"error": "Internship not found"}), 404
 
+    scored = score_internship_for_profile(user, internship)
+    if len(scored.get("missingSkills", [])) == 0:
+        return jsonify({
+            "error": "Roadmap is only available for internships with missing skills"
+        }), 400
+
     progress = _build_progress(user["id"], internship)
     return jsonify({
         "internship": internship,
@@ -133,6 +139,26 @@ def complete_roadmap_level(internship_id):
         return jsonify({"error": "Internship not found"}), 404
 
     progress = _build_progress(user["id"], internship)
+    target_level = next(
+        (
+            level
+            for track in progress["tracks"]
+            for level in track["levels"]
+            if level["id"] == data["levelId"]
+        ),
+        None,
+    )
+    if not target_level:
+        return jsonify({"error": "Roadmap level not found"}), 404
+    if target_level["completed"]:
+        return jsonify({
+            "saved": True,
+            "roadmap": progress,
+            "skills": user.get("skills", []),
+        })
+    if not target_level["unlocked"]:
+        return jsonify({"error": "Complete the previous topic first"}), 400
+
     completed = set(progress["completedLevelIds"])
     completed.add(data["levelId"])
     progress["completedLevelIds"] = list(completed)

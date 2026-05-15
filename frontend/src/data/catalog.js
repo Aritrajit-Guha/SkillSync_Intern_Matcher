@@ -105,8 +105,8 @@ export const SKILL_LABELS = {
 };
 
 export const NAV_ITEMS = [
-  { path: '/qualified', label: 'Qualified Matches' },
-  { path: '/upskill', label: 'Roadmap Arena' },
+  { path: '/home', label: 'Home' },
+  { path: '/qualified', label: 'Internships' },
   { path: '/profile', label: 'Profile' },
 ];
 
