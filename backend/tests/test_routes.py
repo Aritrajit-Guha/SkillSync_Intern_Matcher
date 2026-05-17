@@ -55,6 +55,15 @@ def test_internships_list(client):
     assert response.json["count"] > 0
 
 
+def test_internship_metadata(client):
+    response = client.get("/api/internship-metadata")
+    assert response.status_code == 200
+    assert response.json["source"] == "excel"
+    assert response.json["count"] > 0
+    assert "skills" in response.json
+    assert "locations" in response.json
+
+
 def test_progress_save_and_load(client):
     payload = {
         "user_id": "candidate-1",

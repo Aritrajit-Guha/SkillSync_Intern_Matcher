@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from backend.engine.career_engine import load_internships
+from backend.engine.internship_source import internship_metadata
 
 internships_bp = Blueprint("internships", __name__)
 
@@ -15,6 +16,11 @@ def get_internships():
     if state:
         data = [i for i in data if i.get("state") in ("any", state) or state.lower() in i.get("location", "").lower()]
     return jsonify({"internships": data, "count": len(data)})
+
+
+@internships_bp.route("/internship-metadata", methods=["GET"])
+def get_internship_metadata():
+    return jsonify(internship_metadata())
 
 
 @internships_bp.route("/internships/<intern_id>", methods=["GET"])

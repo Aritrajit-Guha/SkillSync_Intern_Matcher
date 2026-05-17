@@ -8,6 +8,7 @@ import {
   LOCATIONS,
   NAV_ITEMS,
   QUALIFICATIONS,
+  SKILL_LABELS,
   SKILL_OPTIONS,
   THEMES,
 } from './data/catalog.js';
@@ -151,17 +152,6 @@ const INTERNSHIP_TABS = [
 ];
 const ROADMAP_SESSION_KEY = 'active_roadmap_internship_id';
 
-function groupCatalogByRole(items) {
-  return (items || []).reduce((groups, internship) => {
-    const role = internship.title || 'Other internships';
-    if (!groups[role]) {
-      groups[role] = [];
-    }
-    groups[role].push(internship);
-    return groups;
-  }, {});
-}
-
 function getNextUnlockedLevel(roadmap) {
   if (!roadmap?.tracks) return null;
   for (const track of roadmap.tracks) {
@@ -235,7 +225,8 @@ function ProfileStrength({ form }) {
   );
 }
 
-function DashboardCard({ internship, actionLabel, onAction, actionClass = 'primary', children }) {
+function DashboardCard({ internship, actionLabel, onAction, actionClass = 'primary', skillLabels = {}, children }) {
+  const skillName = skill => skillLabels[skill] || labelForSkill(skill);
   const hasGap = internship.missingSkills?.length > 0;
   return (
     <article className="glass-card internship-card">
@@ -256,7 +247,7 @@ function DashboardCard({ internship, actionLabel, onAction, actionClass = 'prima
 
       <div className="chip-row">
         {(internship.skills || []).slice(0, 5).map(skill => (
-          <span key={skill} className="skill-chip">{labelForSkill(skill)}</span>
+          <span key={skill} className="skill-chip">{skillName(skill)}</span>
         ))}
       </div>
 
@@ -265,7 +256,7 @@ function DashboardCard({ internship, actionLabel, onAction, actionClass = 'prima
       )}
 
       {!!hasGap && (
-        <p className="muted-copy">Missing skills: {internship.missingSkills.map(labelForSkill).join(', ')}</p>
+        <p className="muted-copy">Missing skills: {internship.missingSkills.map(skillName).join(', ')}</p>
       )}
 
       {children}
@@ -279,7 +270,19 @@ function DashboardCard({ internship, actionLabel, onAction, actionClass = 'prima
   );
 }
 
-function AuthScreen({ mode, form, setForm, onSubmit, onSwitch, loading, onUseCurrentLocation }) {
+function AuthScreen({
+  mode,
+  form,
+  setForm,
+  onSubmit,
+  onSwitch,
+  loading,
+  onUseCurrentLocation,
+  skillOptions,
+  skillLabels,
+  locationOptions,
+}) {
+  const skillName = skill => skillLabels[skill] || labelForSkill(skill);
   const subtitle = mode === 'login'
     ? 'Pick up where you left off and refresh your recommendations.'
     : 'Complete one professional registration form, choose one location, and let the portal adapt based on your education and skills.';
@@ -492,7 +495,7 @@ function AuthScreen({ mode, form, setForm, onSubmit, onSwitch, loading, onUseCur
               <span className="section-title">Preferred location *</span>
               <p className="helper-copy">Choose one location only. This will influence the internships shown in the portal.</p>
               <div className="location-grid">
-                {LOCATIONS.map(location => (
+                {locationOptions.map(location => (
                   <button key={location} className={`location-card ${selectedLocation === location ? 'selected' : ''}`} type="button" onClick={() => selectLocation(location)}>
                     <strong>{location}</strong>
                     <span>{selectedLocation === location ? 'Selected' : 'Set as preferred location'}</span>
@@ -504,9 +507,9 @@ function AuthScreen({ mode, form, setForm, onSubmit, onSwitch, loading, onUseCur
               <span className="section-title">Skills *</span>
               <p className="helper-copy">Select the skills you already have. The portal will use these skills to rank five internships for you.</p>
               <div className="chip-row large">
-                {SKILL_OPTIONS.map(skill => (
+                {skillOptions.map(skill => (
                   <button key={skill} className={`skill-chip ${form.skills.includes(skill) ? 'selected' : ''}`} type="button" onClick={() => toggleSkill(skill)}>
-                    {labelForSkill(skill)}
+                    {skillName(skill)}
                   </button>
                 ))}
               </div>
@@ -527,11 +530,11 @@ export default function App() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [user, setUser] = useState(null);
   const [dashboard, setDashboard] = useState({ catalog: [], recommended: [], qualified: [], stretch: [], applications: [] });
+  const [internshipMetadata, setInternshipMetadata] = useState({ skills: [], locations: [], source: 'fallback', count: 0 });
   const [registerForm, setRegisterForm] = useState(emptyRegisterForm);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [profileDraft, setProfileDraft] = useState(null);
   const [roadmapData, setRoadmapData] = useState(null);
-  const [selectedStretch, setSelectedStretch] = useState(null);
   const [activeInternshipTab, setActiveInternshipTab] = useState('top5');
   const [menuOpen, setMenuOpen] = useState(false);
   const [applyState, setApplyState] = useState({});
@@ -543,6 +546,15 @@ export default function App() {
   const [homeSlide, setHomeSlide] = useState(0);
   const [activeRoadmapInternshipId, setActiveRoadmapInternshipId] = useState(() => Storage.get(ROADMAP_SESSION_KEY, null));
   const authMode = route === '/register' ? 'register' : 'login';
+  const dynamicSkillLabels = {
+    ...SKILL_LABELS,
+    ...Object.fromEntries((internshipMetadata.skills || []).map(skill => [skill.value, skill.label])),
+  };
+  const skillOptions = internshipMetadata.skills?.length
+    ? internshipMetadata.skills.map(skill => skill.value)
+    : SKILL_OPTIONS;
+  const locationOptions = internshipMetadata.locations?.length ? internshipMetadata.locations : LOCATIONS;
+  const getSkillLabel = skill => dynamicSkillLabels[skill] || labelForSkill(skill);
 
   useEffect(() => {
     const onRoute = () => {
@@ -556,6 +568,12 @@ export default function App() {
     };
     window.addEventListener('popstate', onRoute);
     return () => window.removeEventListener('popstate', onRoute);
+  }, []);
+
+  useEffect(() => {
+    API.internshipMetadata()
+      .then(data => setInternshipMetadata(data))
+      .catch(() => setInternshipMetadata({ skills: [], locations: [], source: 'fallback', count: 0 }));
   }, []);
 
   useEffect(() => {
@@ -600,7 +618,6 @@ export default function App() {
         const data = await API.getRoadmap(internshipId);
         if (cancelled) return;
         setRoadmapData(data);
-        setSelectedStretch(internshipId);
         setChatMessages([
           {
             role: 'assistant',
@@ -657,11 +674,6 @@ export default function App() {
       }
       setUser(prev => (prev ? { ...prev, ...data.profile } : data.profile));
       setProfileDraft(data.profile);
-      setSelectedStretch(prev => {
-        if (!data.stretch.length) return null;
-        const stillExists = data.stretch.some(item => item.id === prev);
-        return stillExists ? prev : data.stretch[0].id;
-      });
     } catch (error) {
       showToast(error.message);
     }
@@ -738,8 +750,6 @@ export default function App() {
       openApplyModal(internship);
       return;
     }
-
-    setSelectedStretch(internshipId);
     try {
       const data = await API.getRoadmap(internshipId);
       setRoadmapData(data);
@@ -783,7 +793,7 @@ export default function App() {
         ...prev,
         {
           role: 'assistant',
-          text: `Marked ${nextLevel.topic} under ${labelForSkill(nextLevel.skill)} as completed. Your gamification bar has moved forward.`,
+          text: `Marked ${nextLevel.topic} under ${getSkillLabel(nextLevel.skill)} as completed. Your gamification bar has moved forward.`,
         },
       ]);
     }
@@ -991,6 +1001,7 @@ export default function App() {
       <DashboardCard
         key={internship.id}
         internship={internship}
+        skillLabels={dynamicSkillLabels}
         actionLabel={
           isApplied
             ? 'Applied'
@@ -1051,6 +1062,9 @@ export default function App() {
         onSwitch={() => navigate(authMode === 'login' ? '/register' : '/login')}
         loading={submitLoading}
         onUseCurrentLocation={fetchBrowserLocation}
+        skillOptions={skillOptions}
+        skillLabels={dynamicSkillLabels}
+        locationOptions={locationOptions}
       />
     );
   }
@@ -1325,7 +1339,7 @@ export default function App() {
                         <div key={track.skill} className="track-card">
                           <div className="track-header">
                             <div>
-                              <h3>{labelForSkill(track.skill)}</h3>
+                              <h3>{getSkillLabel(track.skill)}</h3>
                               <p>{progress}% complete</p>
                             </div>
                             <div className="xp-ring">{progress}%</div>
@@ -1401,7 +1415,7 @@ export default function App() {
                   Refresh current location for distance ranking
                 </button>
                 <div className="location-grid profile-location-grid">
-                  {LOCATIONS.map(location => (
+                  {locationOptions.map(location => (
                     <button
                       key={location}
                       type="button"
@@ -1423,14 +1437,14 @@ export default function App() {
               <div className="field block full">
                 <span>Skills</span>
                 <div className="chip-row large">
-                  {SKILL_OPTIONS.map(skill => (
+                  {skillOptions.map(skill => (
                     <button
                       key={skill}
                       className={`skill-chip ${profileDraft.skills?.includes(skill) ? 'selected' : ''}`}
                       type="button"
                       onClick={() => toggleDraftSkill(skill)}
                     >
-                      {labelForSkill(skill)}
+                      {getSkillLabel(skill)}
                     </button>
                   ))}
                 </div>

@@ -42,6 +42,9 @@ export const API = {
   dashboard() {
     return request('/dashboard');
   },
+  internshipMetadata() {
+    return request('/internship-metadata');
+  },
   refreshRecommendations() {
     return request('/recommendations/refresh', { method: 'POST', body: JSON.stringify({}) });
   },
