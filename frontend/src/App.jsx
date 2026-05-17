@@ -75,6 +75,15 @@ const ACADEMIC_SECTIONS = [
   },
 ];
 
+const DOCUMENT_LABELS = {
+  resume: 'Resume',
+  secondary: 'Class 10 marksheet',
+  higherSecondary: 'Class 12 marksheet',
+  diploma: 'Diploma marksheet',
+  graduation: 'Graduation marksheet',
+  postGraduation: 'Post graduation marksheet',
+};
+
 function readRoute() {
   const path = window.location.pathname === '/' ? '/home' : window.location.pathname;
   return path === '/qualified' ? '/ready-matches' : path;
@@ -94,7 +103,11 @@ function emptyRegisterForm() {
     password: '',
     phone: '',
     photo: '',
+    aadhaarNumber: '',
     address: '',
+    socialLinks: { github: '', linkedin: '' },
+    documents: {},
+    documentFiles: {},
     highestQualification: 'graduation',
     preferredLocations: ['Remote - India'],
     skills: [],
@@ -118,9 +131,62 @@ function getVisibleAcademicSections(highestQualification) {
   });
 }
 
+function getRequiredDocumentKinds(highestQualification) {
+  return ['resume', ...getVisibleAcademicSections(highestQualification).map(section => section.key)];
+}
+
+function getDocumentName(form, kind) {
+  return form?.documentFiles?.[kind]?.name || form?.documents?.[kind]?.originalName || '';
+}
+
+function hasDocument(form, kind) {
+  return Boolean(getDocumentName(form, kind));
+}
+
+function maskAadhaar(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits.length >= 4 ? `XXXX XXXX ${digits.slice(-4)}` : 'Not added';
+}
+
+function isValidAadhaar(value) {
+  return String(value || '').replace(/\D/g, '').length === 12;
+}
+
+function getGithubUsername(url) {
+  const value = String(url || '').trim();
+  if (!value) return '';
+  const normalized = value.includes('github.com') ? value : `https://github.com/${value}`;
+  try {
+    const parsed = new URL(normalized);
+    if (!parsed.hostname.includes('github.com')) return '';
+    return parsed.pathname.split('/').filter(Boolean)[0] || '';
+  } catch {
+    return value.replace(/^@/, '').split('/').filter(Boolean)[0] || '';
+  }
+}
+
+function buildRegistrationFormData(form) {
+  const payload = sanitizeProfilePayload(form);
+  delete payload.documentFiles;
+  const body = new FormData();
+  body.append('profile', JSON.stringify(payload));
+  for (const kind of getRequiredDocumentKinds(form.highestQualification)) {
+    const file = form.documentFiles?.[kind];
+    if (file) body.append(kind, file);
+  }
+  return body;
+}
+
 function sanitizeProfilePayload(form) {
   return {
     ...form,
+    documentFiles: undefined,
+    aadhaarNumber: String(form.aadhaarNumber || '').replace(/\D/g, ''),
+    socialLinks: {
+      github: form.socialLinks?.github || '',
+      linkedin: form.socialLinks?.linkedin || '',
+    },
+    documents: form.documents || {},
     preferredLocations: form.preferredLocations?.length ? [form.preferredLocations[0]] : [],
     skills: Array.from(new Set(form.skills || [])),
     secondary: form.secondary || {},
@@ -131,21 +197,36 @@ function sanitizeProfilePayload(form) {
   };
 }
 
-function isRegisterFormComplete(form) {
-  if (!form.fullName?.trim() || !form.email?.trim() || !form.password?.trim() || !form.phone?.trim() || !form.address?.trim()) {
-    return false;
+function getRegistrationMissingItems(form) {
+  const missing = [];
+  if (!form.fullName?.trim()) missing.push('Full name');
+  if (!form.email?.trim()) missing.push('Email');
+  if (!form.password?.trim()) missing.push('Password');
+  if (!form.phone?.trim()) missing.push('Phone number');
+  if (!isValidAadhaar(form.aadhaarNumber)) missing.push('Valid 12-digit Aadhaar number');
+  if (!form.address?.trim()) missing.push('Address');
+  if (!form.highestQualification) missing.push('Highest qualification');
+  if (!form.preferredLocations?.[0]) missing.push('Preferred location');
+  if (!(form.skills || []).length) missing.push('At least one skill');
+  for (const kind of getRequiredDocumentKinds(form.highestQualification)) {
+    if (!hasDocument(form, kind)) missing.push(DOCUMENT_LABELS[kind]);
   }
-  if (!form.highestQualification) return false;
-  if (!form.preferredLocations?.[0]) return false;
-  if (!(form.skills || []).length) return false;
   const visibleSections = getVisibleAcademicSections(form.highestQualification);
   for (const section of visibleSections) {
     for (const field of section.fields) {
       const value = form?.[section.key]?.[field.key];
-      if (!String(value || '').trim()) return false;
+      if (!String(value || '').trim()) missing.push(`${section.title}: ${field.label}`);
     }
   }
-  return true;
+  return missing;
+}
+
+function formatMissingItems(missing) {
+  if (!missing.length) return '';
+  if (missing.length <= 4) {
+    return `Please complete: ${missing.join(', ')}.`;
+  }
+  return `Please complete: ${missing.slice(0, 4).join(', ')} and ${missing.length - 4} more.`;
 }
 
 const EMPTY_DASHBOARD = {
@@ -262,7 +343,25 @@ function getXpBadge(progress) {
   return { xp, badge: 'Bronze' };
 }
 
-function renderAcademicSections(form, bindNested) {
+function renderDocumentPicker(form, kind, onDocumentSelect, disabled = false) {
+  return (
+    <label className="field block full document-picker">
+      <span>{DOCUMENT_LABELS[kind]} *</span>
+      <input
+        type="file"
+        accept={kind === 'resume' ? '.pdf,.doc,.docx' : '.pdf,.jpg,.jpeg,.png'}
+        disabled={disabled}
+        onChange={event => onDocumentSelect?.(kind, event.target.files?.[0])}
+      />
+      <p className="muted-copy resume-label">
+        {getDocumentName(form, kind) ? `Selected: ${getDocumentName(form, kind)}` : 'No file selected yet.'}
+      </p>
+    </label>
+  );
+}
+
+function renderAcademicSections(form, bindNested, options = {}) {
+  const { showDocuments = false, onDocumentSelect, disabled = false } = options;
   return getVisibleAcademicSections(form.highestQualification).map(section => (
     <div className="form-section-card" key={section.key}>
       <div className="form-section-head">
@@ -274,11 +373,13 @@ function renderAcademicSections(form, bindNested) {
           <label className="field block" key={`${section.key}-${field.key}`}>
             <span>{field.label} *</span>
             <input
+              disabled={disabled}
               value={form[section.key]?.[field.key] || ''}
               onChange={event => bindNested(section.key, field.key, event.target.value)}
             />
           </label>
         ))}
+        {showDocuments && renderDocumentPicker(form, section.key, onDocumentSelect, disabled)}
       </div>
     </div>
   ));
@@ -390,6 +491,23 @@ function AuthScreen({
     const reader = new FileReader();
     reader.onload = () => setForm(prev => ({ ...prev, photo: String(reader.result || '') }));
     reader.readAsDataURL(file);
+  }
+
+  function handleRegisterDocumentSelect(kind, file) {
+    if (!file) return;
+    setForm(prev => ({
+      ...prev,
+      documentFiles: { ...(prev.documentFiles || {}), [kind]: file },
+      documents: {
+        ...(prev.documents || {}),
+        [kind]: {
+          kind,
+          originalName: file.name,
+          size: file.size,
+          contentType: file.type,
+        },
+      },
+    }));
   }
 
   function bindNested(group, key, value) {
@@ -537,9 +655,34 @@ function AuthScreen({
               <span>Phone number *</span>
               <input value={form.phone} onChange={event => setForm(prev => ({ ...prev, phone: event.target.value }))} />
             </label>
+            <label className="field block">
+              <span>Aadhaar number *</span>
+              <input
+                inputMode="numeric"
+                maxLength="12"
+                value={form.aadhaarNumber || ''}
+                onChange={event => setForm(prev => ({ ...prev, aadhaarNumber: event.target.value.replace(/\D/g, '').slice(0, 12) }))}
+              />
+            </label>
             <label className="field block full">
               <span>Address *</span>
               <textarea rows="3" value={form.address} onChange={event => setForm(prev => ({ ...prev, address: event.target.value }))} />
+            </label>
+            <label className="field block">
+              <span>GitHub profile</span>
+              <input
+                placeholder="https://github.com/yourname"
+                value={form.socialLinks?.github || ''}
+                onChange={event => setForm(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || {}), github: event.target.value } }))}
+              />
+            </label>
+            <label className="field block">
+              <span>LinkedIn profile</span>
+              <input
+                placeholder="https://linkedin.com/in/yourname"
+                value={form.socialLinks?.linkedin || ''}
+                onChange={event => setForm(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || {}), linkedin: event.target.value } }))}
+              />
             </label>
             <label className="field block">
               <span>Highest qualification *</span>
@@ -563,6 +706,11 @@ function AuthScreen({
               </p>
             </div>
             <div className="field full">
+              <span className="section-title">Documents</span>
+              <p className="helper-copy">Upload your resume and every marksheet visible for the selected highest qualification.</p>
+              {renderDocumentPicker(form, 'resume', handleRegisterDocumentSelect)}
+            </div>
+            <div className="field full">
               <span className="section-title">Registration summary</span>
               <p className="helper-copy">The form changes as soon as you choose the highest qualification, and you can select only one preferred location.</p>
               <ProfileStrength form={form} />
@@ -570,7 +718,12 @@ function AuthScreen({
             <div className="field full">
               <span className="section-title">Academic details</span>
               <p className="helper-copy">We only ask for the academic sections needed for the selected education level.</p>
-              <div className="academic-section-stack">{renderAcademicSections(form, bindNested)}</div>
+              <div className="academic-section-stack">
+                {renderAcademicSections(form, bindNested, {
+                  showDocuments: true,
+                  onDocumentSelect: handleRegisterDocumentSelect,
+                })}
+              </div>
             </div>
             <div className="field full">
               <span className="section-title">Preferred location *</span>
@@ -615,6 +768,7 @@ export default function App() {
   const [registerForm, setRegisterForm] = useState(emptyRegisterForm);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [profileDraft, setProfileDraft] = useState(null);
+  const [profileEditing, setProfileEditing] = useState(false);
   const [roadmapData, setRoadmapData] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [applyState, setApplyState] = useState({});
@@ -733,6 +887,9 @@ export default function App() {
   }, [route, roadmapData]);
 
   function navigate(path) {
+    if (path !== '/profile') {
+      setProfileEditing(false);
+    }
     if (path !== '/upskill') {
       setRoadmapData(null);
       setChatMessages([]);
@@ -757,22 +914,26 @@ export default function App() {
         return (normalized.growthPicks || []).map(item => item.id).slice(0, 5);
       });
       setUser(prev => (prev ? { ...prev, ...data.profile } : data.profile));
-      setProfileDraft(data.profile);
+      if (!profileEditing) {
+        setProfileDraft(data.profile);
+      }
     } catch (error) {
       showToast(error.message);
     }
   }
 
   async function handleRegister() {
-    if (!isRegisterFormComplete(registerForm)) {
-      showToast('Please fill all mandatory (*) fields before registering.');
+    const missingItems = getRegistrationMissingItems(registerForm);
+    if (missingItems.length) {
+      showToast(formatMissingItems(missingItems));
       return;
     }
     setSubmitLoading(true);
     try {
-      const payload = sanitizeProfilePayload(registerForm);
+      const payload = buildRegistrationFormData(registerForm);
       const data = await API.register(payload);
       setUser(data.user);
+      setProfileDraft(data.user);
       setRegisterForm(emptyRegisterForm());
       fireConfetti(32);
       showToast('Profile created');
@@ -914,11 +1075,39 @@ export default function App() {
   }
 
   async function saveProfile() {
+    if (profileDraft?.aadhaarNumber && !isValidAadhaar(profileDraft.aadhaarNumber)) {
+      showToast('Enter a valid 12-digit Aadhaar number.');
+      return;
+    }
     try {
       const data = await API.updateProfile(sanitizeProfilePayload(profileDraft));
       setUser(data.profile);
       setProfileDraft(data.profile);
+      setProfileEditing(false);
       showToast('Profile updated');
+    } catch (error) {
+      showToast(error.message);
+    }
+  }
+
+  function cancelProfileEdit() {
+    setProfileDraft(user);
+    setProfileEditing(false);
+  }
+
+  async function onProfileDocumentSelect(kind, file) {
+    if (!file) return;
+    try {
+      const data = await API.uploadDocument(kind, file, true);
+      setProfileDraft(prev => ({
+        ...(prev || {}),
+        documents: { ...(prev?.documents || {}), [kind]: data.document },
+      }));
+      setUser(prev => ({
+        ...(prev || {}),
+        documents: { ...(prev?.documents || {}), [kind]: data.document },
+      }));
+      showToast(`${DOCUMENT_LABELS[kind]} uploaded`);
     } catch (error) {
       showToast(error.message);
     }
@@ -938,7 +1127,7 @@ export default function App() {
 
   async function applyForInternship(internship) {
     const payload = applyState[internship.id] || {};
-    if (!payload.fullName || !payload.email || !payload.resumeName) {
+    if (!payload.fullName || !payload.email || !payload.documents?.resume) {
       showToast('Please complete name, email, and resume before applying.');
       return;
     }
@@ -947,9 +1136,22 @@ export default function App() {
         internshipId: internship.id,
         fullName: payload.fullName || user.fullName,
         email: payload.email || user.email,
-        githubProfile: payload.githubProfile || '',
+        aadhaarNumber: payload.aadhaarNumber || user.aadhaarNumber || '',
+        address: payload.address || user.address || '',
         phone: payload.phone || user.phone,
-        resumeName: payload.resumeName || '',
+        preferredLocations: payload.preferredLocations || user.preferredLocations || [],
+        highestQualification: payload.highestQualification || user.highestQualification || '',
+        secondary: payload.secondary || user.secondary || {},
+        higherSecondary: payload.higherSecondary || user.higherSecondary || {},
+        diploma: payload.diploma || user.diploma || {},
+        graduation: payload.graduation || user.graduation || {},
+        postGraduation: payload.postGraduation || user.postGraduation || {},
+        skills: payload.skills || user.skills || [],
+        socialLinks: payload.socialLinks || user.socialLinks || {},
+        githubProfile: payload.socialLinks?.github || '',
+        linkedinProfile: payload.socialLinks?.linkedin || '',
+        documents: payload.documents || user.documents || {},
+        resumeName: payload.documents?.resume?.originalName || '',
         resumeText: payload.resumeText || '',
         coverNote: payload.coverNote || '',
       });
@@ -969,8 +1171,18 @@ export default function App() {
         fullName: prev[internship.id]?.fullName || user.fullName || '',
         email: prev[internship.id]?.email || user.email || '',
         phone: prev[internship.id]?.phone || user.phone || '',
-        githubProfile: prev[internship.id]?.githubProfile || '',
-        resumeName: prev[internship.id]?.resumeName || '',
+        aadhaarNumber: prev[internship.id]?.aadhaarNumber || user.aadhaarNumber || '',
+        address: prev[internship.id]?.address || user.address || '',
+        preferredLocations: prev[internship.id]?.preferredLocations || user.preferredLocations || [],
+        highestQualification: prev[internship.id]?.highestQualification || user.highestQualification || '',
+        secondary: prev[internship.id]?.secondary || user.secondary || {},
+        higherSecondary: prev[internship.id]?.higherSecondary || user.higherSecondary || {},
+        diploma: prev[internship.id]?.diploma || user.diploma || {},
+        graduation: prev[internship.id]?.graduation || user.graduation || {},
+        postGraduation: prev[internship.id]?.postGraduation || user.postGraduation || {},
+        skills: prev[internship.id]?.skills || user.skills || [],
+        socialLinks: prev[internship.id]?.socialLinks || user.socialLinks || { github: '', linkedin: '' },
+        documents: prev[internship.id]?.documents || user.documents || {},
         resumeText: prev[internship.id]?.resumeText || '',
         coverNote: prev[internship.id]?.coverNote || '',
       },
@@ -978,15 +1190,24 @@ export default function App() {
     setApplyModalInternship(internship);
   }
 
-  function onResumeSelect(internshipId, file) {
+  async function onApplicationDocumentSelect(internshipId, kind, file) {
     if (!file) return;
-    setApplyState(prev => ({
-      ...prev,
-      [internshipId]: {
-        ...(prev[internshipId] || {}),
-        resumeName: file.name,
-      },
-    }));
+    try {
+      const data = await API.uploadDocument(kind, file, false);
+      setApplyState(prev => ({
+        ...prev,
+        [internshipId]: {
+          ...(prev[internshipId] || {}),
+          documents: {
+            ...(prev[internshipId]?.documents || {}),
+            [kind]: data.document,
+          },
+        },
+      }));
+      showToast(`${DOCUMENT_LABELS[kind]} attached to this application`);
+    } catch (error) {
+      showToast(error.message);
+    }
   }
 
   async function sendRoadmapChat(messageText) {
@@ -1709,80 +1930,213 @@ export default function App() {
         )}
 
         {route === '/profile' && profileDraft && (
-          <section className="profile-layout glass-card">
-            <div className="profile-hero">
-              <div className="profile-avatar">
-                {profileDraft.photo ? <img src={profileDraft.photo} alt={profileDraft.fullName} /> : <span>{(profileDraft.fullName || 'P').slice(0, 1).toUpperCase()}</span>}
-              </div>
-              <div>
-                <h2>{profileDraft.fullName}</h2>
-                <p>{profileDraft.email}</p>
-              </div>
-            </div>
-
-            <ProfileStrength form={profileDraft} />
-
-            <div className="form-grid">
-              <label className="field block">
-                <span>Full name *</span>
-                <input value={profileDraft.fullName || ''} onChange={event => updateProfileField('fullName', event.target.value)} />
-              </label>
-              <label className="field block">
-                <span>Phone</span>
-                <input value={profileDraft.phone || ''} onChange={event => updateProfileField('phone', event.target.value)} />
-              </label>
-              <label className="field block full">
-                <span>Address</span>
-                <textarea rows="3" value={profileDraft.address || ''} onChange={event => updateProfileField('address', event.target.value)} />
-              </label>
-              <label className="field block">
-                <span>Highest qualification</span>
-                <select value={profileDraft.highestQualification || 'graduation'} onChange={event => updateProfileField('highestQualification', event.target.value)}>
-                  {QUALIFICATIONS.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
-                </select>
-              </label>
-              <div className="field block full">
-                <span>Preferred location</span>
-                <button className="action-btn secondary" type="button" onClick={() => fetchBrowserLocation('profile')}>
-                  Refresh current location for distance ranking
-                </button>
-                <div className="location-grid profile-location-grid">
-                  {locationOptions.map(location => (
-                    <button
-                      key={location}
-                      type="button"
-                      className={`location-card ${(profileDraft.preferredLocations || [])[0] === location ? 'selected' : ''}`}
-                      onClick={() => selectDraftLocation(location)}
-                    >
-                      <strong>{location}</strong>
-                      <span>{(profileDraft.preferredLocations || [])[0] === location ? 'Selected' : 'Set as preferred location'}</span>
-                    </button>
-                  ))}
+          <section className={`profile-layout professional-profile ${profileEditing ? 'editing' : ''}`}>
+            <div className="glass-card profile-pro-hero">
+              <div className="profile-cover-strip" />
+              <div className="profile-pro-main">
+                <div className="profile-avatar large">
+                  {profileDraft.photo ? <img src={profileDraft.photo} alt={profileDraft.fullName} /> : <span>{(profileDraft.fullName || 'P').slice(0, 1).toUpperCase()}</span>}
                 </div>
-              </div>
-              <div className="field block full">
-                <span>Academic details</span>
-                <div className="academic-section-stack">
-                  {renderAcademicSections(profileDraft, updateProfileNestedField)}
+                <div className="profile-title-block">
+                  <p className="eyebrow">Candidate profile</p>
+                  <h2>{profileDraft.fullName || 'Unnamed candidate'}</h2>
+                  <p>{profileDraft.email} - {profileDraft.preferredLocations?.[0] || 'No preferred location'}</p>
+                  <div className="profile-link-row">
+                    {profileDraft.socialLinks?.github ? <a href={profileDraft.socialLinks.github} target="_blank" rel="noreferrer">GitHub</a> : <span>GitHub not connected</span>}
+                    {profileDraft.socialLinks?.linkedin ? <a href={profileDraft.socialLinks.linkedin} target="_blank" rel="noreferrer">LinkedIn</a> : <span>LinkedIn not connected</span>}
+                  </div>
                 </div>
-              </div>
-              <div className="field block full">
-                <span>Skills</span>
-                <div className="chip-row large">
-                  {skillOptions.map(skill => (
-                    <button
-                      key={skill}
-                      className={`skill-chip ${profileDraft.skills?.includes(skill) ? 'selected' : ''}`}
-                      type="button"
-                      onClick={() => toggleDraftSkill(skill)}
-                    >
-                      {getSkillLabel(skill)}
-                    </button>
-                  ))}
+                <div className="profile-actions">
+                  {!profileEditing ? (
+                    <button className="action-btn primary" type="button" onClick={() => setProfileEditing(true)}>Edit profile</button>
+                  ) : (
+                    <>
+                      <button className="action-btn secondary" type="button" onClick={cancelProfileEdit}>Cancel</button>
+                      <button className="action-btn primary" type="button" onClick={saveProfile}>Save changes</button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
-            <button className="action-btn primary" type="button" onClick={saveProfile}>Save profile changes</button>
+
+            {!profileEditing ? (
+              <>
+                <ProfileStrength form={profileDraft} />
+                <div className="profile-pro-grid">
+                  <article className="glass-card profile-panel">
+                    <h3>About</h3>
+                    <div className="profile-fact-list">
+                      <span><strong>Phone</strong>{profileDraft.phone || 'Not added'}</span>
+                      <span><strong>Aadhaar</strong>{profileDraft.aadhaarMasked || maskAadhaar(profileDraft.aadhaarNumber)}</span>
+                      <span><strong>Address</strong>{profileDraft.address || 'Not added'}</span>
+                      <span><strong>Qualification</strong>{QUALIFICATIONS.find(item => item.value === profileDraft.highestQualification)?.label || 'Not added'}</span>
+                    </div>
+                  </article>
+
+                  <article className="glass-card profile-panel">
+                    <h3>Skills</h3>
+                    <div className="chip-row large">
+                      {(profileDraft.skills || []).length ? profileDraft.skills.map(skill => (
+                        <span key={skill} className="skill-chip selected">{getSkillLabel(skill)}</span>
+                      )) : <p className="muted-copy">No skills added yet.</p>}
+                    </div>
+                  </article>
+
+                  <article className="glass-card profile-panel wide">
+                    <h3>Education timeline</h3>
+                    <div className="education-timeline">
+                      {getVisibleAcademicSections(profileDraft.highestQualification).map(section => (
+                        <div className="timeline-item" key={section.key}>
+                          <span className="timeline-dot" />
+                          <div>
+                            <strong>{section.title}</strong>
+                            <p>{section.fields.map(field => profileDraft[section.key]?.[field.key]).filter(Boolean).join(' - ') || 'Details not added'}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+
+                  <article className="glass-card profile-panel">
+                    <h3>Documents</h3>
+                    <div className="document-list">
+                      {getRequiredDocumentKinds(profileDraft.highestQualification).map(kind => (
+                        <span key={kind} className={profileDraft.documents?.[kind] ? 'ready' : 'missing'}>
+                          <strong>{DOCUMENT_LABELS[kind]}</strong>
+                          {profileDraft.documents?.[kind]?.originalName || 'Missing'}
+                        </span>
+                      ))}
+                    </div>
+                  </article>
+
+                  <article className="glass-card profile-panel">
+                    <h3>Applications</h3>
+                    <div className="profile-stat-stack">
+                      <strong>{dashboard.applications?.length || 0}</strong>
+                      <span>submitted internships</span>
+                    </div>
+                  </article>
+
+                  <article className="glass-card profile-panel wide github-panel">
+                    <div className="section-heading-row compact-row">
+                      <div>
+                        <h3>GitHub contribution timeline</h3>
+                        <p className="muted-copy">{getGithubUsername(profileDraft.socialLinks?.github) ? `@${getGithubUsername(profileDraft.socialLinks?.github)}` : 'Connect a GitHub profile to show public contributions.'}</p>
+                      </div>
+                      {profileDraft.socialLinks?.github && <a className="action-btn secondary" href={profileDraft.socialLinks.github} target="_blank" rel="noreferrer">Open GitHub</a>}
+                    </div>
+                    {getGithubUsername(profileDraft.socialLinks?.github) ? (
+                      <img
+                        className="github-contrib-chart"
+                        alt="GitHub contribution timeline"
+                        src={`https://ghchart.rshah.org/${encodeURIComponent(getGithubUsername(profileDraft.socialLinks.github))}`}
+                      />
+                    ) : (
+                      <div className="placeholder-copy">No GitHub profile connected.</div>
+                    )}
+                  </article>
+                </div>
+              </>
+            ) : (
+              <section className="glass-card profile-edit-card">
+                <div className="panel-heading">
+                  <h2>Edit profile</h2>
+                  <p>Update your public profile, academic records, documents, and matching signals.</p>
+                </div>
+                <div className="form-grid">
+                  <label className="field block">
+                    <span>Full name *</span>
+                    <input value={profileDraft.fullName || ''} onChange={event => updateProfileField('fullName', event.target.value)} />
+                  </label>
+                  <label className="field block">
+                    <span>Phone</span>
+                    <input value={profileDraft.phone || ''} onChange={event => updateProfileField('phone', event.target.value)} />
+                  </label>
+                  <label className="field block">
+                    <span>Aadhaar number</span>
+                    <input
+                      inputMode="numeric"
+                      maxLength="12"
+                      value={profileDraft.aadhaarNumber || ''}
+                      onChange={event => updateProfileField('aadhaarNumber', event.target.value.replace(/\D/g, '').slice(0, 12))}
+                    />
+                  </label>
+                  <label className="field block">
+                    <span>Highest qualification</span>
+                    <select value={profileDraft.highestQualification || 'graduation'} onChange={event => updateProfileField('highestQualification', event.target.value)}>
+                      {QUALIFICATIONS.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+                    </select>
+                  </label>
+                  <label className="field block">
+                    <span>GitHub profile</span>
+                    <input
+                      value={profileDraft.socialLinks?.github || ''}
+                      onChange={event => updateProfileField('socialLinks', { ...(profileDraft.socialLinks || {}), github: event.target.value })}
+                    />
+                  </label>
+                  <label className="field block">
+                    <span>LinkedIn profile</span>
+                    <input
+                      value={profileDraft.socialLinks?.linkedin || ''}
+                      onChange={event => updateProfileField('socialLinks', { ...(profileDraft.socialLinks || {}), linkedin: event.target.value })}
+                    />
+                  </label>
+                  <label className="field block full">
+                    <span>Address</span>
+                    <textarea rows="3" value={profileDraft.address || ''} onChange={event => updateProfileField('address', event.target.value)} />
+                  </label>
+                  <div className="field block full">
+                    <span>Preferred location</span>
+                    <button className="action-btn secondary" type="button" onClick={() => fetchBrowserLocation('profile')}>
+                      Refresh current location for distance ranking
+                    </button>
+                    <div className="location-grid profile-location-grid">
+                      {locationOptions.map(location => (
+                        <button
+                          key={location}
+                          type="button"
+                          className={`location-card ${(profileDraft.preferredLocations || [])[0] === location ? 'selected' : ''}`}
+                          onClick={() => selectDraftLocation(location)}
+                        >
+                          <strong>{location}</strong>
+                          <span>{(profileDraft.preferredLocations || [])[0] === location ? 'Selected' : 'Set as preferred location'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="field block full">
+                    <span>Documents</span>
+                    <div className="profile-document-grid">
+                      {renderDocumentPicker(profileDraft, 'resume', onProfileDocumentSelect)}
+                    </div>
+                  </div>
+                  <div className="field block full">
+                    <span>Academic details</span>
+                    <div className="academic-section-stack">
+                      {renderAcademicSections(profileDraft, updateProfileNestedField, {
+                        showDocuments: true,
+                        onDocumentSelect: onProfileDocumentSelect,
+                      })}
+                    </div>
+                  </div>
+                  <div className="field block full">
+                    <span>Skills</span>
+                    <div className="chip-row large">
+                      {skillOptions.map(skill => (
+                        <button
+                          key={skill}
+                          className={`skill-chip ${profileDraft.skills?.includes(skill) ? 'selected' : ''}`}
+                          type="button"
+                          onClick={() => toggleDraftSkill(skill)}
+                        >
+                          {getSkillLabel(skill)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
           </section>
         )}
 
@@ -1851,23 +2205,137 @@ export default function App() {
                 />
               </label>
               <label className="field block">
-                <span>GitHub profile</span>
+                <span>Aadhaar number</span>
                 <input
-                  placeholder="https://github.com/yourname"
-                  value={applyState[applyModalInternship.id]?.githubProfile || ''}
+                  inputMode="numeric"
+                  maxLength="12"
+                  value={applyState[applyModalInternship.id]?.aadhaarNumber || ''}
                   onChange={event => setApplyState(prev => ({
                     ...prev,
-                    [applyModalInternship.id]: { ...(prev[applyModalInternship.id] || {}), githubProfile: event.target.value },
+                    [applyModalInternship.id]: { ...(prev[applyModalInternship.id] || {}), aadhaarNumber: event.target.value.replace(/\D/g, '').slice(0, 12) },
                   }))}
                 />
               </label>
-              <label className="field block full">
-                <span>Upload resume *</span>
-                <input type="file" accept=".pdf,.doc,.docx" onChange={event => onResumeSelect(applyModalInternship.id, event.target.files?.[0])} />
-                {applyState[applyModalInternship.id]?.resumeName && (
-                  <p className="muted-copy resume-label">Selected: {applyState[applyModalInternship.id].resumeName}</p>
-                )}
+              <label className="field block">
+                <span>Preferred location</span>
+                <select
+                  value={applyState[applyModalInternship.id]?.preferredLocations?.[0] || ''}
+                  onChange={event => setApplyState(prev => ({
+                    ...prev,
+                    [applyModalInternship.id]: { ...(prev[applyModalInternship.id] || {}), preferredLocations: [event.target.value] },
+                  }))}
+                >
+                  <option value="">Select location</option>
+                  {locationOptions.map(location => <option key={location} value={location}>{location}</option>)}
+                </select>
               </label>
+              <label className="field block full">
+                <span>Address</span>
+                <textarea
+                  rows="3"
+                  value={applyState[applyModalInternship.id]?.address || ''}
+                  onChange={event => setApplyState(prev => ({
+                    ...prev,
+                    [applyModalInternship.id]: { ...(prev[applyModalInternship.id] || {}), address: event.target.value },
+                  }))}
+                />
+              </label>
+              <label className="field block">
+                <span>GitHub profile</span>
+                <input
+                  placeholder="https://github.com/yourname"
+                  value={applyState[applyModalInternship.id]?.socialLinks?.github || ''}
+                  onChange={event => setApplyState(prev => ({
+                    ...prev,
+                    [applyModalInternship.id]: {
+                      ...(prev[applyModalInternship.id] || {}),
+                      socialLinks: { ...(prev[applyModalInternship.id]?.socialLinks || {}), github: event.target.value },
+                    },
+                  }))}
+                />
+              </label>
+              <label className="field block">
+                <span>LinkedIn profile</span>
+                <input
+                  placeholder="https://linkedin.com/in/yourname"
+                  value={applyState[applyModalInternship.id]?.socialLinks?.linkedin || ''}
+                  onChange={event => setApplyState(prev => ({
+                    ...prev,
+                    [applyModalInternship.id]: {
+                      ...(prev[applyModalInternship.id] || {}),
+                      socialLinks: { ...(prev[applyModalInternship.id]?.socialLinks || {}), linkedin: event.target.value },
+                    },
+                  }))}
+                />
+              </label>
+              <label className="field block">
+                <span>Highest qualification</span>
+                <select
+                  value={applyState[applyModalInternship.id]?.highestQualification || 'graduation'}
+                  onChange={event => setApplyState(prev => ({
+                    ...prev,
+                    [applyModalInternship.id]: { ...(prev[applyModalInternship.id] || {}), highestQualification: event.target.value },
+                  }))}
+                >
+                  {QUALIFICATIONS.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+                </select>
+              </label>
+              <label className="field block full">
+                <span>Documents</span>
+                <div className="profile-document-grid">
+                  {renderDocumentPicker(
+                    applyState[applyModalInternship.id] || {},
+                    'resume',
+                    (kind, file) => onApplicationDocumentSelect(applyModalInternship.id, kind, file),
+                  )}
+                </div>
+              </label>
+              <div className="field block full">
+                <span>Academic details and marksheets</span>
+                <div className="academic-section-stack">
+                  {renderAcademicSections(
+                    applyState[applyModalInternship.id] || {},
+                    (group, key, value) => setApplyState(prev => ({
+                      ...prev,
+                      [applyModalInternship.id]: {
+                        ...(prev[applyModalInternship.id] || {}),
+                        [group]: { ...(prev[applyModalInternship.id]?.[group] || {}), [key]: value },
+                      },
+                    })),
+                    {
+                      showDocuments: true,
+                      onDocumentSelect: (kind, file) => onApplicationDocumentSelect(applyModalInternship.id, kind, file),
+                    },
+                  )}
+                </div>
+              </div>
+              <div className="field block full">
+                <span>Skills</span>
+                <div className="chip-row large">
+                  {skillOptions.map(skill => {
+                    const selected = applyState[applyModalInternship.id]?.skills?.includes(skill);
+                    return (
+                      <button
+                        key={skill}
+                        className={`skill-chip ${selected ? 'selected' : ''}`}
+                        type="button"
+                        onClick={() => setApplyState(prev => {
+                          const current = prev[applyModalInternship.id]?.skills || [];
+                          return {
+                            ...prev,
+                            [applyModalInternship.id]: {
+                              ...(prev[applyModalInternship.id] || {}),
+                              skills: selected ? current.filter(item => item !== skill) : [...current, skill],
+                            },
+                          };
+                        })}
+                      >
+                        {getSkillLabel(skill)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <label className="field block full">
                 <span>Resume summary</span>
                 <textarea

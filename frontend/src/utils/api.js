@@ -1,10 +1,11 @@
 const BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 async function request(path, options = {}) {
+  const isFormData = options.body instanceof FormData;
   const response = await fetch(`${BASE}${path}`, {
     credentials: 'include',
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(options.headers || {}),
     },
     ...options,
@@ -22,6 +23,9 @@ export const API = {
     return request('/auth/me');
   },
   register(payload) {
+    if (payload instanceof FormData) {
+      return request('/auth/register', { method: 'POST', body: payload });
+    }
     return request('/auth/register', { method: 'POST', body: JSON.stringify(payload) });
   },
   login(payload) {
@@ -50,6 +54,13 @@ export const API = {
   },
   updateProfile(payload) {
     return request('/profile', { method: 'PATCH', body: JSON.stringify(payload) });
+  },
+  uploadDocument(kind, file, persistProfile = true) {
+    const body = new FormData();
+    body.append('kind', kind);
+    body.append('persistProfile', persistProfile ? '1' : '0');
+    body.append('file', file);
+    return request('/uploads', { method: 'POST', body });
   },
   getRoadmap(internshipId, skill, refresh = false) {
     const refreshParam = refresh ? '&refresh=1' : '';

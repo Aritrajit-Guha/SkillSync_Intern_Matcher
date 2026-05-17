@@ -32,7 +32,7 @@ def _save_skill_state(user_id, internship, skill, state):
 def _levels_for_skill(user, internship, skill, force_refresh=False):
     doc = _roadmap_doc(user["id"], internship["id"])
     saved = doc["skillRoadmaps"].get(skill)
-    if saved and saved.get("levels") and not force_refresh:
+    if saved and saved.get("levels") and not force_refresh and not _should_retry_cached_fallback(saved):
         return (
             saved["levels"],
             saved.get("source", "cached"),
@@ -43,9 +43,30 @@ def _levels_for_skill(user, internship, skill, force_refresh=False):
     return build_levels_from_topics(skill, topics), source, source_detail, raw_preview
 
 
+def _should_retry_cached_fallback(saved):
+    if saved.get("source") != "fallback":
+        return False
+    if saved.get("completedLevelIds"):
+        return False
+    detail = str(saved.get("sourceDetail", "")).lower()
+    transient_markers = (
+        "http_429",
+        "quota",
+        "exhausted",
+        "resource_exhausted",
+        "too many requests",
+        "missing_api_key",
+        "timeout",
+        "url_error",
+        "os_error",
+    )
+    return any(marker in detail for marker in transient_markers)
+
+
 def _build_progress(user, internship, skill, force_refresh=False):
     doc = _roadmap_doc(user["id"], internship["id"])
     saved = {} if force_refresh else doc["skillRoadmaps"].get(skill, {})
+    retrying_cached_fallback = bool(saved and _should_retry_cached_fallback(saved))
     base_levels, source, source_detail, raw_preview = _levels_for_skill(user, internship, skill, force_refresh=force_refresh)
     completed = set() if force_refresh else set(saved.get("completedLevelIds", []))
     levels = []
@@ -69,11 +90,11 @@ def _build_progress(user, internship, skill, force_refresh=False):
         "skill": skill,
         "levels": base_levels,
         "completedLevelIds": list(completed),
-        "source": saved.get("source", source),
-        "sourceDetail": saved.get("sourceDetail", source_detail),
-        "rawPreview": saved.get("rawPreview", raw_preview),
+        "source": source if retrying_cached_fallback else saved.get("source", source),
+        "sourceDetail": source_detail if retrying_cached_fallback else saved.get("sourceDetail", source_detail),
+        "rawPreview": raw_preview if retrying_cached_fallback else saved.get("rawPreview", raw_preview),
     }
-    if force_refresh or not saved.get("levels"):
+    if force_refresh or retrying_cached_fallback or not saved.get("levels"):
         _save_skill_state(user["id"], internship, skill, state)
     return {
         "user_id": user["id"],

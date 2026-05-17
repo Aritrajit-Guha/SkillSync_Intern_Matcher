@@ -77,6 +77,8 @@ def ensure_collections():
     db.users.create_index("id", unique=True)
     db.applications.create_index([("user_id", 1), ("internship_id", 1)], unique=True)
     db.roadmaps.create_index([("user_id", 1), ("internship_id", 1)], unique=True)
+    db.uploads.files.create_index("metadata.appFileId", unique=True)
+    db.uploads.files.create_index("metadata.userId")
 
 
 def list_users():
