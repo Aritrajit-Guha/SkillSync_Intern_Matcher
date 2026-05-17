@@ -45,25 +45,26 @@ export const API = {
   internshipMetadata() {
     return request('/internship-metadata');
   },
-  refreshRecommendations() {
-    return request('/recommendations/refresh', { method: 'POST', body: JSON.stringify({}) });
+  refreshRecommendations(preferences = {}) {
+    return request('/recommendations/refresh', { method: 'POST', body: JSON.stringify(preferences) });
   },
   updateProfile(payload) {
     return request('/profile', { method: 'PATCH', body: JSON.stringify(payload) });
   },
-  getRoadmap(internshipId) {
-    return request(`/roadmap/${internshipId}`);
+  getRoadmap(internshipId, skill, refresh = false) {
+    const refreshParam = refresh ? '&refresh=1' : '';
+    return request(`/roadmap/${internshipId}?skill=${encodeURIComponent(skill || '')}${refreshParam}`);
   },
-  completeRoadmapLevel(internshipId, levelId) {
+  completeRoadmapLevel(internshipId, levelId, skill) {
     return request(`/roadmap/${internshipId}/complete`, {
       method: 'POST',
-      body: JSON.stringify({ levelId }),
+      body: JSON.stringify({ levelId, skill }),
     });
   },
-  chatRoadmap(internshipId, message) {
+  chatRoadmap(internshipId, message, skill) {
     return request(`/roadmap/${internshipId}/chat`, {
       method: 'POST',
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, skill }),
     });
   },
   apply(payload) {

@@ -31,12 +31,46 @@ def test_ml_quality_can_beat_slightly_closer_average_role():
 def test_missing_skills_are_kept_for_roadmaps():
     profile = {
         "highestQualification": "graduation",
-        "skills": ["python"],
+        "skills": ["python", "sql", "git", "aws"],
         "preferredLocations": ["Bengaluru, Karnataka"],
     }
     recommendations = bucket_recommendations(profile, load_internships(), limit=5)
-    assert recommendations["stretch"]
-    assert recommendations["stretch"][0]["missingSkills"]
+    assert recommendations["growthPicks"]
+    assert recommendations["growthPicks"][0]["missingSkills"]
+    assert all(1 <= len(item["missingSkills"]) <= 2 for item in recommendations["growthPicks"])
+
+
+def test_ready_and_growth_buckets_are_split_by_skill_gap():
+    profile = {
+        "highestQualification": "graduation",
+        "skills": ["python", "machine-learning", "aws", "sql", "git"],
+        "preferredLocations": ["Bengaluru, Karnataka"],
+    }
+    recommendations = bucket_recommendations(profile, load_internships(), limit=5)
+    assert recommendations["readyMatches"]
+    assert all(not item["missingSkills"] for item in recommendations["readyMatches"])
+    assert all(1 <= len(item["missingSkills"]) <= 2 for item in recommendations["growthPicks"])
+
+
+def test_preferences_change_ranking_without_hard_filtering():
+    base_profile = {
+        "highestQualification": "graduation",
+        "skills": ["python", "sql", "git"],
+        "preferredLocations": ["Bengaluru, Karnataka"],
+    }
+    remote_profile = {
+        **base_profile,
+        "desiredLocation": "Remote",
+        "jobType": "Internship",
+        "stipendPreference": "Paid stipend",
+        "experiencePreference": "Fresher",
+    }
+    local_results = bucket_recommendations(base_profile, load_internships(), limit=5)["growthPicks"]
+    remote_results = bucket_recommendations(remote_profile, load_internships(), limit=5)["growthPicks"]
+    assert local_results
+    assert remote_results
+    assert {item["id"] for item in remote_results}
+    assert all(item["jobType"] for item in remote_results)
 
 
 def test_ranker_refits_when_dataset_changes():

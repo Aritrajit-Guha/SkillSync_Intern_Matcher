@@ -106,8 +106,8 @@ export const SKILL_LABELS = {
 
 export const NAV_ITEMS = [
   { path: '/home', label: 'Home' },
-  { path: '/qualified', label: 'Internships' },
-  { path: '/profile', label: 'Profile' },
+  { path: '/ready-matches', label: 'Ready Matches' },
+  { path: '/growth-picks', label: 'Growth Picks' },
 ];
 
 export function labelForSkill(skill) {

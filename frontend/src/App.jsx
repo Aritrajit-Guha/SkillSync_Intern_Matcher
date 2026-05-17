@@ -76,7 +76,8 @@ const ACADEMIC_SECTIONS = [
 ];
 
 function readRoute() {
-  return window.location.pathname === '/' ? '/home' : window.location.pathname;
+  const path = window.location.pathname === '/' ? '/home' : window.location.pathname;
+  return path === '/qualified' ? '/ready-matches' : path;
 }
 
 function goTo(path) {
@@ -147,10 +148,87 @@ function isRegisterFormComplete(form) {
   return true;
 }
 
-const INTERNSHIP_TABS = [
-  { key: 'top5', label: 'Top 5 internships' },
-];
-const ROADMAP_SESSION_KEY = 'active_roadmap_internship_id';
+const EMPTY_DASHBOARD = {
+  catalog: [],
+  recommended: [],
+  qualified: [],
+  stretch: [],
+  readyMatches: [],
+  growthPicks: [],
+  applications: [],
+};
+
+const EMPTY_PREFERENCES = {
+  domain: 'any',
+  desiredLocation: '',
+  jobType: 'any',
+  stipendPreference: 'Any',
+  experiencePreference: 'Any',
+  experienceAmount: '',
+};
+
+const EMPTY_HOME_FILTERS = {
+  domain: 'all',
+  location: 'all',
+  jobType: 'all',
+  experience: 'all',
+  stipendType: 'all',
+  fit: 'all',
+};
+
+const ROADMAP_SESSION_KEY = 'active_roadmap_context';
+
+function getStoredRoadmapContext() {
+  const context = Storage.get(ROADMAP_SESSION_KEY, null);
+  if (!context || typeof context !== 'object' || !context.internshipId || !context.skill) {
+    return null;
+  }
+  return context;
+}
+
+function normalizeDashboard(data = {}) {
+  return {
+    ...EMPTY_DASHBOARD,
+    ...data,
+    catalog: data.catalog || [],
+    recommended: data.recommended || data.readyMatches || [],
+    qualified: data.qualified || data.readyMatches || [],
+    stretch: data.stretch || data.growthPicks || [],
+    readyMatches: data.readyMatches || data.qualified || [],
+    growthPicks: data.growthPicks || data.stretch || [],
+    applications: data.applications || [],
+  };
+}
+
+function getStipendType(internship) {
+  const amount = Number(internship?.stipendAmount || 0);
+  const text = String(internship?.stipend || '').toLowerCase();
+  return amount > 0 && !text.includes('performance') && !text.includes('free') ? 'paid' : 'free';
+}
+
+function getFitLabel(internship) {
+  const missing = internship?.missingSkills?.length || 0;
+  const score = internship?.score || 0;
+  if (!missing && score >= 78) return 'Highly aligned';
+  if (!missing) return 'Good fit';
+  if (missing <= 2) return 'Stretch';
+  return 'Not ideal';
+}
+
+function logGeminiRoadmapDebug(data, context = 'roadmap') {
+  const raw = data?.roadmap?.rawPreview;
+  if (!raw) return;
+  console.groupCollapsed(`[SkillSync] Gemini raw response (${context})`);
+  console.log('source:', data.roadmap.source);
+  console.log('sourceDetail:', data.roadmap.sourceDetail || '');
+  console.log('skill:', data.skill);
+  try {
+    console.log('payload:', JSON.parse(raw));
+  } catch {
+    console.log('payload:', raw);
+  }
+  console.groupEnd();
+}
 
 function getNextUnlockedLevel(roadmap) {
   if (!roadmap?.tracks) return null;
@@ -228,6 +306,7 @@ function ProfileStrength({ form }) {
 function DashboardCard({ internship, actionLabel, onAction, actionClass = 'primary', skillLabels = {}, children }) {
   const skillName = skill => skillLabels[skill] || labelForSkill(skill);
   const hasGap = internship.missingSkills?.length > 0;
+  const fitLabel = getFitLabel(internship);
   return (
     <article className="glass-card internship-card">
       <div className="internship-card-top">
@@ -239,9 +318,9 @@ function DashboardCard({ internship, actionLabel, onAction, actionClass = 'prima
       </div>
 
       <div className="fit-meta-row">
-        <p className="internship-meta">{internship.location} · {internship.jobType} · {internship.stipend}</p>
+        <p className="internship-meta">{internship.location} - {internship.jobType} - {internship.stipend}</p>
         <span className={`internship-status-pill ${hasGap ? 'gap' : 'ready'}`}>
-          {hasGap ? `${internship.missingSkills.length} skill gap${internship.missingSkills.length === 1 ? '' : 's'}` : 'Apply ready'}
+          {hasGap ? `${internship.missingSkills.length} skill gap${internship.missingSkills.length === 1 ? '' : 's'}` : fitLabel}
         </span>
       </div>
 
@@ -252,7 +331,7 @@ function DashboardCard({ internship, actionLabel, onAction, actionClass = 'prima
       </div>
 
       {!!internship.matchedSkills?.length && (
-        <p className="success-copy">Matched skills: {internship.matchedSkills.map(labelForSkill).join(', ')}</p>
+        <p className="success-copy">Matched skills: {internship.matchedSkills.map(skillName).join(', ')}</p>
       )}
 
       {!!hasGap && (
@@ -262,10 +341,12 @@ function DashboardCard({ internship, actionLabel, onAction, actionClass = 'prima
       {children}
       {internship.scoreBreakdown && (
         <p className="muted-copy">
-          Score factors: skill {Math.round(internship.scoreBreakdown.skill)}, location {Math.round(internship.scoreBreakdown.location)}, distance {Math.round(internship.scoreBreakdown.distance)}, boost {Math.round(internship.scoreBreakdown.opportunityBoost)}
+          Score factors: skill {Math.round(internship.scoreBreakdown.skill)}, quality {Math.round(internship.scoreBreakdown.quality)}, location {Math.round(internship.scoreBreakdown.location)}
         </p>
       )}
-      <button className={`action-btn ${actionClass}`} onClick={onAction} type="button">{actionLabel}</button>
+      {actionLabel && (
+        <button className={`action-btn ${actionClass}`} onClick={onAction} type="button">{actionLabel}</button>
+      )}
     </article>
   );
 }
@@ -529,22 +610,25 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [user, setUser] = useState(null);
-  const [dashboard, setDashboard] = useState({ catalog: [], recommended: [], qualified: [], stretch: [], applications: [] });
+  const [dashboard, setDashboard] = useState(EMPTY_DASHBOARD);
   const [internshipMetadata, setInternshipMetadata] = useState({ skills: [], locations: [], source: 'fallback', count: 0 });
   const [registerForm, setRegisterForm] = useState(emptyRegisterForm);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [profileDraft, setProfileDraft] = useState(null);
   const [roadmapData, setRoadmapData] = useState(null);
-  const [activeInternshipTab, setActiveInternshipTab] = useState('top5');
   const [menuOpen, setMenuOpen] = useState(false);
   const [applyState, setApplyState] = useState({});
   const [applyModalInternship, setApplyModalInternship] = useState(null);
-  const [topFiveInternshipIds, setTopFiveInternshipIds] = useState([]);
+  const [readyMatchIds, setReadyMatchIds] = useState([]);
+  const [growthPickIds, setGrowthPickIds] = useState([]);
+  const [recommendationPreferences, setRecommendationPreferences] = useState(EMPTY_PREFERENCES);
+  const [homeSearch, setHomeSearch] = useState('');
+  const [homeFilters, setHomeFilters] = useState(EMPTY_HOME_FILTERS);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [homeSlide, setHomeSlide] = useState(0);
-  const [activeRoadmapInternshipId, setActiveRoadmapInternshipId] = useState(() => Storage.get(ROADMAP_SESSION_KEY, null));
+  const [activeRoadmapContext, setActiveRoadmapContext] = useState(getStoredRoadmapContext);
   const authMode = route === '/register' ? 'register' : 'login';
   const dynamicSkillLabels = {
     ...SKILL_LABELS,
@@ -613,10 +697,11 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
 
-    async function restoreRoadmapFromSession(internshipId) {
+    async function restoreRoadmapFromSession(context) {
       try {
-        const data = await API.getRoadmap(internshipId);
+        const data = await API.getRoadmap(context.internshipId, context.skill);
         if (cancelled) return;
+        logGeminiRoadmapDebug(data, 'session restore');
         setRoadmapData(data);
         setChatMessages([
           {
@@ -633,12 +718,12 @@ export default function App() {
     }
 
     if (route === '/upskill' && !roadmapData) {
-      const savedInternshipId = Storage.get(ROADMAP_SESSION_KEY, null);
-      if (!savedInternshipId) {
+      const savedContext = getStoredRoadmapContext();
+      if (!savedContext) {
         showToast('Open a missing-skill internship first to enter the roadmap page.');
-        goTo('/home');
+        goTo('/growth-picks');
       } else {
-        restoreRoadmapFromSession(savedInternshipId);
+        restoreRoadmapFromSession(savedContext);
       }
     }
 
@@ -652,6 +737,7 @@ export default function App() {
       setRoadmapData(null);
       setChatMessages([]);
       setChatInput('');
+      setActiveRoadmapContext(null);
       Storage.remove(ROADMAP_SESSION_KEY);
     }
     goTo(path);
@@ -660,18 +746,16 @@ export default function App() {
   async function loadDashboard() {
     try {
       const data = await API.dashboard();
-      setDashboard(data);
-      setTopFiveInternshipIds(prev => {
+      const normalized = normalizeDashboard(data);
+      setDashboard(normalized);
+      setReadyMatchIds(prev => {
         if (prev.length) return prev;
-        const fromRecommended = (data.recommended || []).map(item => item.id);
-        if (fromRecommended.length) return fromRecommended.slice(0, 5);
-        return [...(data.qualified || []), ...(data.stretch || [])].map(item => item.id).slice(0, 5);
+        return (normalized.readyMatches || []).map(item => item.id).slice(0, 5);
       });
-      const stretchIds = new Set((data.stretch || []).map(item => item.id));
-      if (activeRoadmapInternshipId && !stretchIds.has(activeRoadmapInternshipId)) {
-        setActiveRoadmapInternshipId(null);
-        Storage.remove(ROADMAP_SESSION_KEY);
-      }
+      setGrowthPickIds(prev => {
+        if (prev.length) return prev;
+        return (normalized.growthPicks || []).map(item => item.id).slice(0, 5);
+      });
       setUser(prev => (prev ? { ...prev, ...data.profile } : data.profile));
       setProfileDraft(data.profile);
     } catch (error) {
@@ -722,14 +806,19 @@ export default function App() {
   async function handleLogout() {
     await API.logout().catch(() => null);
     setUser(null);
-    setDashboard({ catalog: [], recommended: [], qualified: [], stretch: [], applications: [] });
+    setDashboard(EMPTY_DASHBOARD);
+    setReadyMatchIds([]);
+    setGrowthPickIds([]);
     navigate('/login');
   }
 
   async function handleRefresh() {
     try {
-      const data = await API.refreshRecommendations();
-      setDashboard(data);
+      const data = await API.refreshRecommendations(recommendationPreferences);
+      const normalized = normalizeDashboard(data);
+      setDashboard(normalized);
+      setReadyMatchIds((normalized.readyMatches || []).map(item => item.id).slice(0, 5));
+      setGrowthPickIds((normalized.growthPicks || []).map(item => item.id).slice(0, 5));
       setUser(prev => ({ ...prev, ...data.profile }));
       setProfileDraft(data.profile);
       showToast('Recommendation lists refreshed');
@@ -738,29 +827,41 @@ export default function App() {
     }
   }
 
-  async function handleLoadRoadmap(internshipId) {
+  async function handleLoadRoadmap(internshipId, skill, refresh = false) {
     const internship = findInternshipById(internshipId);
-    if (activeRoadmapInternshipId && activeRoadmapInternshipId !== internshipId) {
+    const nextContext = { internshipId, skill };
+    if (
+      activeRoadmapContext
+      && (activeRoadmapContext.internshipId !== internshipId || activeRoadmapContext.skill !== skill)
+    ) {
       showToast('Complete your active roadmap first before opening another skill-gap internship.');
       return;
     }
 
-    if (internship && !internship.missingSkills?.length) {
-      showToast('This internship is already ready to apply. No roadmap is needed.');
-      openApplyModal(internship);
+    if (!skill) {
+      showToast('Choose one missing skill to start a focused roadmap.');
+      return;
+    }
+    if (internship && !internship.missingSkills?.includes(skill)) {
+      showToast('That skill is already covered for this internship.');
+      if (!internship.missingSkills?.length) {
+        openApplyModal(internship);
+      }
       return;
     }
     try {
-      const data = await API.getRoadmap(internshipId);
+      const data = await API.getRoadmap(internshipId, skill, refresh);
+      logGeminiRoadmapDebug(data, refresh ? 'regenerate' : 'open');
       setRoadmapData(data);
-      setActiveRoadmapInternshipId(internshipId);
-      Storage.set(ROADMAP_SESSION_KEY, internshipId);
+      setActiveRoadmapContext(nextContext);
+      Storage.set(ROADMAP_SESSION_KEY, nextContext);
       setChatMessages([
         {
           role: 'assistant',
-          text: `I am your roadmap copilot for ${data.internship.title} at ${data.internship.org}. Ask what to learn first, ask for a weekly plan, or say "tick next mission" after you finish a level.`,
+          text: `I am your roadmap copilot for ${getSkillLabel(skill)} at ${data.internship.org}. Ask what to learn first, ask for a weekly plan, or say "tick next mission" after you finish a level.`,
         },
       ]);
+      showToast(refresh ? `Roadmap regenerated via ${data.roadmap.source}` : 'Roadmap opened');
       goTo('/upskill');
     } catch (error) {
       showToast(error.message);
@@ -768,16 +869,29 @@ export default function App() {
   }
 
   async function completeLevel(levelId) {
-    if (!roadmapData) return;
+    if (!roadmapData) return false;
     try {
-      const data = await API.completeRoadmapLevel(roadmapData.internship.id, levelId);
+      const activeSkill = roadmapData.skill || activeRoadmapContext?.skill;
+      const data = await API.completeRoadmapLevel(roadmapData.internship.id, levelId, activeSkill);
       setRoadmapData(prev => ({ ...prev, roadmap: data.roadmap }));
       setUser(prev => ({ ...prev, skills: data.skills }));
       setProfileDraft(prev => ({ ...prev, skills: data.skills }));
-      await loadDashboard();
-      showToast('Mission cleared and progress updated');
+      const latest = await API.refreshRecommendations(recommendationPreferences);
+      setDashboard(normalizeDashboard(latest));
+      if (data.skillCompleted) {
+        fireConfetti(28);
+        showToast(`${getSkillLabel(data.skill)} added to your profile`);
+        setRoadmapData(null);
+        setActiveRoadmapContext(null);
+        Storage.remove(ROADMAP_SESSION_KEY);
+        goTo('/growth-picks');
+      } else {
+        showToast('Topic cleared and progress updated');
+      }
+      return Boolean(data.skillCompleted);
     } catch (error) {
       showToast(error.message);
+      return false;
     }
   }
 
@@ -787,8 +901,8 @@ export default function App() {
       showToast('All roadmap missions are already completed for this internship.');
       return;
     }
-    await completeLevel(nextLevel.id);
-    if (fromChat) {
+    const skillCompleted = await completeLevel(nextLevel.id);
+    if (fromChat && !skillCompleted) {
       setChatMessages(prev => [
         ...prev,
         {
@@ -896,7 +1010,7 @@ export default function App() {
 
     setChatLoading(true);
     try {
-      const data = await API.chatRoadmap(roadmapData.internship.id, message);
+      const data = await API.chatRoadmap(roadmapData.internship.id, message, roadmapData.skill || activeRoadmapContext?.skill);
       setChatMessages(prev => [
         ...prev,
         { role: 'assistant', text: data.reply, suggestions: data.suggestions || [] },
@@ -982,69 +1096,77 @@ export default function App() {
       ...(dashboard.recommended || []),
       ...(dashboard.qualified || []),
       ...(dashboard.stretch || []),
+      ...(dashboard.readyMatches || []),
+      ...(dashboard.growthPicks || []),
     ].find(item => item.id === internshipId);
   }
 
-  function renderInternshipCard(internship, allowRoadmap = false) {
-    const roadmapSolvedForThisInternship = Boolean(
-      roadmapCompleted
-      && activeRoadmapInternshipId
-      && internship.id === activeRoadmapInternshipId
-    );
-    const hasGap = !roadmapSolvedForThisInternship && internship.missingSkills?.length > 0;
+  function renderInternshipCard(internship, mode = 'catalog') {
+    const hasGap = internship.missingSkills?.length > 0;
     const isApplied = Boolean(applicationsById[internship.id]);
-    const isAnotherRoadmapLocked = Boolean(
-      activeRoadmapInternshipId && activeRoadmapInternshipId !== internship.id
-    );
-    const canOpenRoadmap = hasGap && allowRoadmap && !isAnotherRoadmapLocked;
+    const isReadyMode = mode === 'ready';
+    const isGrowthMode = mode === 'growth';
+    const canApply = !hasGap && (isReadyMode || isGrowthMode);
     return (
       <DashboardCard
         key={internship.id}
         internship={internship}
         skillLabels={dynamicSkillLabels}
-        actionLabel={
-          isApplied
-            ? 'Applied'
-            : canOpenRoadmap
-              ? 'Learn missing skills'
-              : isAnotherRoadmapLocked && hasGap && allowRoadmap
-                ? 'Roadmap locked'
-              : 'Apply now'
-        }
+        actionLabel={canApply ? (isApplied ? 'Applied' : 'Apply now') : null}
         onAction={() => {
-          if (isApplied) return;
-          if (canOpenRoadmap) {
-            handleLoadRoadmap(internship.id);
-            return;
-          }
-          if (isAnotherRoadmapLocked && hasGap && allowRoadmap) {
-            showToast('Another internship roadmap is active. Complete it first to unlock this roadmap.');
-            return;
-          }
-          if (hasGap && !allowRoadmap) {
-            showToast('Open this internship from Better opportunities tab to start roadmap learning.');
-            return;
-          }
+          if (isApplied || !canApply) return;
           openApplyModal(internship);
         }}
-        actionClass={isApplied || (isAnotherRoadmapLocked && hasGap && allowRoadmap) ? 'disabled' : canOpenRoadmap ? 'secondary' : 'primary'}
+        actionClass={isApplied ? 'disabled' : 'primary'}
       >
         {isApplied && (
           <p className="success-copy">Submitted on {new Date(applicationsById[internship.id].applied_at).toLocaleDateString('en-IN')}</p>
+        )}
+        {mode === 'catalog' && (
+          <p className="catalog-fit-copy">{getFitLabel(internship)} for your current profile.</p>
+        )}
+        {isGrowthMode && !hasGap && (
+          <p className="success-copy">Qualified now. You can apply without refreshing this fixed list.</p>
+        )}
+        {isGrowthMode && hasGap && (
+          <div className="learn-button-row">
+            {internship.missingSkills.slice(0, 2).map(skill => (
+              <button
+                key={`${internship.id}-${skill}`}
+                className="action-btn secondary"
+                type="button"
+                onClick={() => handleLoadRoadmap(internship.id, skill)}
+              >
+                Learn {getSkillLabel(skill)}
+              </button>
+            ))}
+          </div>
         )}
       </DashboardCard>
     );
   }
 
   const homeSlides = [
-    'AI-powered internship matching based on skills, qualification, and location.',
-    'Track roadmap progress and continue learning exactly where you left off.',
-    'Discover qualified roles and better opportunities across multiple domains.',
+    {
+      eyebrow: 'Live opportunity atlas',
+      title: 'Every internship, ranked around your profile.',
+      copy: 'Browse the full Excel-backed catalog with fit labels, location signals, stipend context, and ML scoring on every card.',
+    },
+    {
+      eyebrow: 'Ready Matches',
+      title: 'Five roles you can apply to right now.',
+      copy: 'Set your domain, location, stipend, and experience preferences, then refresh a fixed list of fully qualified internships.',
+    },
+    {
+      eyebrow: 'Growth Picks',
+      title: 'Higher-upside roles unlocked by one or two skills.',
+      copy: 'Open a single-skill roadmap, complete the animated levels, and the skill is added back to your profile instantly.',
+    },
   ];
 
   useEffect(() => {
     if (route !== '/home') return undefined;
-    const id = setInterval(() => setHomeSlide(prev => (prev + 1) % 3), 3500);
+    const id = setInterval(() => setHomeSlide(prev => (prev + 1) % 3), 4300);
     return () => clearInterval(id);
   }, [route]);
 
@@ -1076,15 +1198,57 @@ export default function App() {
     roadmapData?.internship && (roadmapProgress.total === 0 || roadmapProgress.completed === roadmapProgress.total)
   );
   const roadmapProgressPercent = roadmapCompleted ? 100 : roadmapProgress.percent;
+  const activeSlide = homeSlides[homeSlide % homeSlides.length];
+  const catalogItems = dashboard.catalog || [];
+  const readyItems = readyMatchIds.map(findInternshipById).filter(Boolean);
+  const growthItems = growthPickIds.map(findInternshipById).filter(Boolean);
+  const domainOptions = Array.from(new Set(catalogItems.map(item => item.sector).filter(Boolean))).sort();
+  const catalogLocations = Array.from(new Set(catalogItems.map(item => item.location).filter(Boolean))).sort();
+  const jobTypeOptions = Array.from(new Set(catalogItems.map(item => item.jobType).filter(Boolean))).sort();
+  const experienceOptions = Array.from(new Set(catalogItems.map(item => item.experience).filter(Boolean))).sort();
+  const searchText = homeSearch.trim().toLowerCase();
+  const filteredCatalog = catalogItems.filter(item => {
+    const haystack = [
+      item.title,
+      item.org,
+      item.location,
+      item.jobType,
+      item.sector,
+      item.experience,
+      ...(item.skills || []),
+    ].join(' ').toLowerCase();
+    const matchesSearch = !searchText || haystack.includes(searchText);
+    const matchesDomain = homeFilters.domain === 'all' || item.sector === homeFilters.domain;
+    const matchesLocation = homeFilters.location === 'all' || item.location === homeFilters.location;
+    const matchesJobType = homeFilters.jobType === 'all' || item.jobType === homeFilters.jobType;
+    const matchesExperience = homeFilters.experience === 'all' || item.experience === homeFilters.experience;
+    const matchesStipend = homeFilters.stipendType === 'all' || getStipendType(item) === homeFilters.stipendType;
+    const label = getFitLabel(item);
+    const matchesFit =
+      homeFilters.fit === 'all'
+      || (homeFilters.fit === 'qualified' && !item.missingSkills?.length)
+      || (homeFilters.fit === 'stretch' && item.missingSkills?.length >= 1 && item.missingSkills?.length <= 2)
+      || (homeFilters.fit === 'not-ideal' && label === 'Not ideal')
+      || (homeFilters.fit === 'highly-aligned' && label === 'Highly aligned');
+    return matchesSearch && matchesDomain && matchesLocation && matchesJobType && matchesExperience && matchesStipend && matchesFit;
+  });
+
+  function updatePreference(key, value) {
+    setRecommendationPreferences(prev => ({ ...prev, [key]: value }));
+  }
+
+  function updateHomeFilter(key, value) {
+    setHomeFilters(prev => ({ ...prev, [key]: value }));
+  }
 
   return (
     <div className="app-shell">
       <header className="topbar glass-card">
-        <button className="brand-lockup" onClick={() => navigate('/qualified')} type="button">
-          <span className="brand-orb" />
+        <button className="brand-lockup" onClick={() => navigate('/home')} type="button">
+          <span className="brand-mark">PM</span>
           <span>
             <strong>PM Internship Engine</strong>
-            <small>Skill-aware matching, adaptive forms, and gap roadmaps</small>
+            <small>ML ranked opportunities and focused growth roadmaps</small>
           </span>
         </button>
 
@@ -1116,87 +1280,229 @@ export default function App() {
       </header>
 
       <main className="workspace">
-        <section className="page-hero glass-card">
-          <div>
-            <p className="eyebrow">Candidate cockpit</p>
-            <h1>{user.fullName || 'Candidate'}</h1>
-            <p>
-              The portal now ranks five internships from your selected skills and location, and it opens roadmap missions only when there is a real skill gap.
-            </p>
-          </div>
-          <div className="hero-actions">
-            <button className="action-btn secondary" type="button" onClick={handleRefresh}>Refresh Lists</button>
-            <div className="glass-stat compact">
-              <strong>{dashboard.qualified.length}</strong>
-              <span>qualified now</span>
-            </div>
-            <div className="glass-stat compact">
-              <strong>{dashboard.stretch.length}</strong>
-              <span>better opportunities</span>
-            </div>
-          </div>
-        </section>
-
         {route === '/home' && (
-          <section className="glass-card home-hero">
-            <p className="eyebrow">Platform overview</p>
-            <h2>Welcome to PM Internship Engine</h2>
-            <p>{homeSlides[homeSlide]}</p>
-            <div className="home-metrics">
-              <div className="summary-pill"><strong>{dashboard.catalog.length}</strong><span>Total internships</span></div>
-              <div className="summary-pill"><strong>{new Set((dashboard.catalog || []).map(item => item.title)).size}</strong><span>Domains / roles</span></div>
-              <div className="summary-pill"><strong>{dashboard.qualified.length}</strong><span>Best qualified now</span></div>
-            </div>
-            <button className="action-btn primary" type="button" onClick={() => navigate('/qualified')}>Explore internships</button>
-          </section>
+          <>
+            <section className="home-hero premium-hero">
+              <div className="premium-hero-copy">
+                <p className="eyebrow">{activeSlide.eyebrow}</p>
+                <h1>{activeSlide.title}</h1>
+                <p>{activeSlide.copy}</p>
+                <div className="hero-actions">
+                  <button className="action-btn primary" type="button" onClick={() => navigate('/ready-matches')}>Generate ready matches</button>
+                  <button className="action-btn secondary" type="button" onClick={() => navigate('/growth-picks')}>View growth picks</button>
+                </div>
+              </div>
+              <div className="hero-showcase">
+                <div className="hero-showcase-card">
+                  <span>Catalog</span>
+                  <strong>{catalogItems.length}</strong>
+                  <small>Excel-backed internships</small>
+                </div>
+                <div className="hero-showcase-card">
+                  <span>Ready</span>
+                  <strong>{dashboard.readyMatches.length}</strong>
+                  <small>Qualified choices</small>
+                </div>
+                <div className="hero-showcase-card">
+                  <span>Growth</span>
+                  <strong>{dashboard.growthPicks.length}</strong>
+                  <small>1-2 skill gaps</small>
+                </div>
+              </div>
+              <div className="hero-slide-dots" aria-label="Hero slideshow">
+                {homeSlides.map((slide, index) => (
+                  <button
+                    key={slide.eyebrow}
+                    className={index === homeSlide ? 'active' : ''}
+                    type="button"
+                    aria-label={`Show slide ${index + 1}`}
+                    onClick={() => setHomeSlide(index)}
+                  />
+                ))}
+              </div>
+            </section>
+
+            <section className="catalog-section">
+              <div className="section-heading-row">
+                <div>
+                  <p className="eyebrow">Internship catalog</p>
+                  <h2>Browse all live internships</h2>
+                </div>
+                <span className="catalog-count">{filteredCatalog.length} shown</span>
+              </div>
+
+              <div className="catalog-controls">
+                <label className="field block catalog-search">
+                  <span>Search</span>
+                  <input
+                    value={homeSearch}
+                    onChange={event => setHomeSearch(event.target.value)}
+                    placeholder="Search by role, company, skill, location, or domain"
+                  />
+                </label>
+                <label className="field block">
+                  <span>Domain</span>
+                  <select value={homeFilters.domain} onChange={event => updateHomeFilter('domain', event.target.value)}>
+                    <option value="all">All domains</option>
+                    {domainOptions.map(domain => <option key={domain} value={domain}>{domain}</option>)}
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Location</span>
+                  <select value={homeFilters.location} onChange={event => updateHomeFilter('location', event.target.value)}>
+                    <option value="all">All locations</option>
+                    {catalogLocations.map(location => <option key={location} value={location}>{location}</option>)}
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Job type</span>
+                  <select value={homeFilters.jobType} onChange={event => updateHomeFilter('jobType', event.target.value)}>
+                    <option value="all">All types</option>
+                    {jobTypeOptions.map(jobType => <option key={jobType} value={jobType}>{jobType}</option>)}
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Experience</span>
+                  <select value={homeFilters.experience} onChange={event => updateHomeFilter('experience', event.target.value)}>
+                    <option value="all">Any experience</option>
+                    {experienceOptions.map(experience => <option key={experience} value={experience}>{experience}</option>)}
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Stipend</span>
+                  <select value={homeFilters.stipendType} onChange={event => updateHomeFilter('stipendType', event.target.value)}>
+                    <option value="all">Any stipend</option>
+                    <option value="paid">Paid stipend</option>
+                    <option value="free">Free/performance-based</option>
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Fit</span>
+                  <select value={homeFilters.fit} onChange={event => updateHomeFilter('fit', event.target.value)}>
+                    <option value="all">All fit levels</option>
+                    <option value="highly-aligned">Highly aligned</option>
+                    <option value="qualified">Qualified now</option>
+                    <option value="stretch">Stretch</option>
+                    <option value="not-ideal">Not ideal</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="card-grid catalog-grid">
+                {filteredCatalog.map(item => renderInternshipCard(item, 'catalog'))}
+              </div>
+            </section>
+          </>
         )}
 
-        {route === '/qualified' && (
+        {route === '/ready-matches' && (
           <section className="page-grid">
             <div className="panel-stack">
-              <div className="panel-heading">
-                <h2>Internship discovery</h2>
-                <p>
-                  This page shows only your fixed top 5 internships. If any of these has a skill gap, complete its roadmap and then apply from the same card.
-                </p>
+              <div className="section-heading-row">
+                <div>
+                  <p className="eyebrow">Ready Matches</p>
+                  <h2>Five internships you qualify for now</h2>
+                </div>
+                <button className="action-btn secondary" type="button" onClick={handleRefresh}>Refresh Lists</button>
+              </div>
+
+              <div className="preference-panel">
+                <label className="field block">
+                  <span>Domain</span>
+                  <select value={recommendationPreferences.domain} onChange={event => updatePreference('domain', event.target.value)}>
+                    <option value="any">Any domain</option>
+                    {domainOptions.map(domain => <option key={domain} value={domain}>{domain}</option>)}
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Desired location</span>
+                  <select value={recommendationPreferences.desiredLocation} onChange={event => updatePreference('desiredLocation', event.target.value)}>
+                    <option value="">Use profile location</option>
+                    {Array.from(new Set([...locationOptions, ...catalogLocations])).map(location => (
+                      <option key={location} value={location}>{location}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Job type</span>
+                  <select value={recommendationPreferences.jobType} onChange={event => updatePreference('jobType', event.target.value)}>
+                    <option value="any">Any type</option>
+                    {jobTypeOptions.map(jobType => <option key={jobType} value={jobType}>{jobType}</option>)}
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Stipend preference</span>
+                  <select value={recommendationPreferences.stipendPreference} onChange={event => updatePreference('stipendPreference', event.target.value)}>
+                    <option>Any</option>
+                    <option>Paid stipend</option>
+                    <option>Free/performance-based</option>
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Experience fit</span>
+                  <select value={recommendationPreferences.experiencePreference} onChange={event => updatePreference('experiencePreference', event.target.value)}>
+                    <option>Any</option>
+                    <option>Fresher</option>
+                    <option>Experienced</option>
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Experience amount</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={recommendationPreferences.experienceAmount}
+                    onChange={event => updatePreference('experienceAmount', event.target.value)}
+                    placeholder="Years"
+                  />
+                </label>
               </div>
 
               <div className="summary-strip">
-                <div className="summary-pill">
-                  <strong>{topFiveInternshipIds.length}</strong>
-                  <span>fixed top internships on this page</span>
+                <div className="summary-pill"><strong>{readyItems.length}</strong><span>fixed ready matches</span></div>
+                <div className="summary-pill"><strong>{growthItems.length}</strong><span>growth picks waiting</span></div>
+              </div>
+
+              {readyItems.length > 0 ? (
+                <div className="card-grid">
+                  {readyItems.map(item => renderInternshipCard(item, 'ready'))}
                 </div>
+              ) : (
+                <div className="empty-state glass-card">
+                  <h3>No ready matches yet</h3>
+                  <p>Refresh the lists after choosing preferences.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {route === '/growth-picks' && (
+          <section className="page-grid">
+            <div className="panel-stack">
+              <div className="section-heading-row">
+                <div>
+                  <p className="eyebrow">Growth Picks</p>
+                  <h2>Better internships within one or two skills</h2>
+                </div>
+                <button className="action-btn secondary" type="button" onClick={handleRefresh}>Refresh Lists</button>
               </div>
 
-              <div className="internship-tabs" role="tablist" aria-label="Internship views">
-                {INTERNSHIP_TABS.map(tab => (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    role="tab"
-                    className={`internship-tab ${activeInternshipTab === tab.key ? 'active' : ''}`}
-                    aria-selected={activeInternshipTab === tab.key}
-                    onClick={() => setActiveInternshipTab(tab.key)}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+              <div className="summary-strip">
+                <div className="summary-pill"><strong>{growthItems.length}</strong><span>fixed growth picks</span></div>
+                <div className="summary-pill"><strong>{user.skills?.length || 0}</strong><span>skills on profile</span></div>
               </div>
 
-              {activeInternshipTab === 'top5' && (
-                topFiveInternshipIds.length > 0 ? (
-                  <div className="card-grid">
-                    {topFiveInternshipIds
-                      .map(id => findInternshipById(id))
-                      .filter(Boolean)
-                      .map(item => renderInternshipCard(item, true))}
-                  </div>
-                ) : (
-                  <div className="empty-state glass-card">
-                    <h3>No top internships yet</h3>
-                    <p>Refresh recommendations to generate your top 5 internships.</p>
-                  </div>
-                )
+              {growthItems.length > 0 ? (
+                <div className="card-grid">
+                  {growthItems.map(item => renderInternshipCard(item, 'growth'))}
+                </div>
+              ) : (
+                <div className="empty-state glass-card">
+                  <h3>No growth picks yet</h3>
+                  <p>Refresh the lists to find high-upside roles with a small skill gap.</p>
+                </div>
               )}
             </div>
           </section>
@@ -1206,13 +1512,13 @@ export default function App() {
           <section className="dual-layout roadmap-page">
             <div className="stretch-list glass-card">
               <div className="panel-heading">
-                <h2>Skill-gap roadmap arena</h2>
-                <p>Only the currently active internship roadmap is shown here.</p>
+                <h2>{getSkillLabel(roadmapData?.skill || activeRoadmapContext?.skill || '')} roadmap</h2>
+                <p>One focused skill path for the selected growth pick.</p>
               </div>
               {!roadmapData?.internship ? (
                 <div className="empty-state">
                   <h3>No active roadmap selected</h3>
-                  <p>Open one skill-gap internship from Better opportunities to start learning.</p>
+                  <p>Open one growth pick to start learning.</p>
                 </div>
               ) : (
                 <div className="stack-list">
@@ -1226,7 +1532,7 @@ export default function App() {
                       <strong>{roadmapData.internship.title}</strong>
                       <small>{roadmapData.internship.org}</small>
                     </span>
-                    <em>{roadmapData.internship.missingSkills?.length || 0} skills missing</em>
+                    <em>{getSkillLabel(roadmapData.skill)}</em>
                   </button>
                 </div>
               )}
@@ -1243,9 +1549,9 @@ export default function App() {
                 <>
                   <div className="arena-top">
                     <div>
-                      <p className="eyebrow">Roadmap page</p>
+                      <p className="eyebrow">Focused roadmap</p>
                       <h2>{roadmapData.internship.title}</h2>
-                      <p>{roadmapData.internship.org} · {roadmapData.internship.location}</p>
+                      <p>{roadmapData.internship.org} - {roadmapData.internship.location}</p>
                     </div>
                     <div className="hero-actions">
                       <button
@@ -1256,30 +1562,52 @@ export default function App() {
                       >
                         Apply now
                       </button>
-                      <button className="action-btn secondary" type="button" onClick={() => navigate('/qualified')}>Back to internships</button>
+                      <button className="action-btn secondary" type="button" onClick={() => navigate('/growth-picks')}>Back to Growth Picks</button>
                     </div>
                   </div>
 
                   <div className="gamification-panel">
                     <div>
-                      <p className="eyebrow">Gamification bar</p>
+                      <p className="eyebrow">Animated progress</p>
                       <h3>{roadmapProgress.completed} of {roadmapProgress.total} topics completed</h3>
-                      <p className="muted-copy">XP: {roadmapBadge.xp} · Badge: {roadmapBadge.badge}</p>
+                      <p className="muted-copy">XP: {roadmapBadge.xp} - Badge: {roadmapBadge.badge}</p>
                     </div>
                     <div className="progress-meter">
                       <div className={`progress-meter-bar ${roadmapCompleted ? 'complete' : ''}`} style={{ width: `${roadmapProgressPercent}%` }} />
                     </div>
-                    <p className="muted-copy">Progress stays saved, so next time you open this roadmap you continue from the same point.</p>
+                    <p className="muted-copy">Complete the final topic to add this skill to your profile.</p>
                   </div>
 
                   <div className="chatbot-panel chatbot-panel-top">
                     <div className="chatbot-panel-head">
                       <div className="panel-heading compact">
                         <h2>AI Roadmap Copilot</h2>
-                        <p>This page opens only from internships that still have missing skills.</p>
+                        <p>Ask about the active topic order or mark the next topic complete.</p>
                       </div>
-                      <div className="chatbot-badge">Focused roadmap</div>
+                      <div className={`chatbot-badge ${roadmapData.roadmap.source === 'gemini' ? 'gemini' : 'fallback'}`}>
+                        {roadmapData.roadmap.source === 'gemini' ? 'Gemini generated' : 'Fallback syllabus'}
+                      </div>
                     </div>
+                    {roadmapData.roadmap.source !== 'gemini' && (
+                      <div className="roadmap-source-alert">
+                        <div>
+                          <span>Gemini unavailable: {roadmapData.roadmap.sourceDetail || 'unknown reason'}</span>
+                          {roadmapData.roadmap.rawPreview && (
+                            <details className="raw-preview">
+                              <summary>Raw Gemini response</summary>
+                              <pre>{roadmapData.roadmap.rawPreview}</pre>
+                            </details>
+                          )}
+                        </div>
+                        <button
+                          className="action-btn secondary"
+                          type="button"
+                          onClick={() => handleLoadRoadmap(roadmapData.internship.id, roadmapData.skill, true)}
+                        >
+                          Regenerate with Gemini
+                        </button>
+                      </div>
+                    )}
                     <div className="chat-shell">
                       <div className="chat-log">
                         {chatMessages.map((message, index) => (
@@ -1345,8 +1673,12 @@ export default function App() {
                             <div className="xp-ring">{progress}%</div>
                           </div>
                           <div className="level-stack">
-                            {track.levels.map(level => (
-                              <div key={level.id} className={`level-row ${level.completed ? 'done' : level.unlocked ? 'open' : 'locked'}`}>
+                            {track.levels.map((level, index) => (
+                              <div
+                                key={level.id}
+                                className={`level-row waterfall-level ${level.completed ? 'done' : level.unlocked ? 'open' : 'locked'}`}
+                                style={{ marginLeft: `${index % 2 === 0 ? 0 : 34}px` }}
+                              >
                                 <div className="level-row-body">
                                   <span>{level.label}</span>
                                   <strong>{level.topic}</strong>
@@ -1483,7 +1815,7 @@ export default function App() {
           <div className="apply-modal glass-card" onClick={event => event.stopPropagation()}>
             <div className="panel-heading">
               <h2>Apply for {applyModalInternship.title}</h2>
-              <p>{applyModalInternship.org} · Fill in the required details before submission.</p>
+              <p>{applyModalInternship.org} - Fill in the required details before submission.</p>
             </div>
 
             <div className="form-grid">

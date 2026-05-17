@@ -106,6 +106,8 @@ def test_register_login_dashboard_flow(client):
     assert "recommended" in dashboard.json
     assert "qualified" in dashboard.json
     assert "stretch" in dashboard.json
+    assert "readyMatches" in dashboard.json
+    assert "growthPicks" in dashboard.json
 
 
 def test_roadmap_requires_unlock_order(client):
@@ -115,19 +117,21 @@ def test_roadmap_requires_unlock_order(client):
         "password": "secret123",
         "phone": "9999999999",
         "highestQualification": "graduation",
-        "skills": ["python"],
+        "skills": ["python", "sql", "git", "aws"],
         "preferredLocations": ["Remote - India"],
     })
     assert register.status_code == 201
 
     dashboard = client.get("/api/dashboard")
     assert dashboard.status_code == 200
-    stretch = dashboard.json["stretch"]
+    stretch = dashboard.json["growthPicks"]
     assert stretch
 
     internship_id = stretch[0]["id"]
-    roadmap = client.get(f"/api/roadmap/{internship_id}")
+    skill = stretch[0]["missingSkills"][0]
+    roadmap = client.get(f"/api/roadmap/{internship_id}?skill={skill}")
     assert roadmap.status_code == 200
+    assert roadmap.json["skill"] == skill
 
     tracks = roadmap.json["roadmap"]["tracks"]
     locked_level = None
@@ -139,6 +143,39 @@ def test_roadmap_requires_unlock_order(client):
     assert locked_level is not None
     assert locked_level["unlocked"] is False
 
-    complete = client.post(f"/api/roadmap/{internship_id}/complete", json={"levelId": locked_level["id"]})
+    complete = client.post(f"/api/roadmap/{internship_id}/complete", json={"levelId": locked_level["id"], "skill": skill})
     assert complete.status_code == 400
     assert "previous topic" in complete.json["error"]
+
+
+def test_single_skill_roadmap_completion_adds_only_that_skill(client):
+    register = client.post("/api/auth/register", json={
+        "fullName": "Completion Candidate",
+        "email": "completion@example.com",
+        "password": "secret123",
+        "phone": "9999999999",
+        "highestQualification": "graduation",
+        "skills": ["python", "sql", "git", "aws"],
+        "preferredLocations": ["Bengaluru, Karnataka"],
+    })
+    assert register.status_code == 201
+
+    dashboard = client.get("/api/dashboard")
+    growth = dashboard.json["growthPicks"]
+    target = next(item for item in growth if len(item["missingSkills"]) == 1)
+    skill = target["missingSkills"][0]
+    initial_skills = {"python", "sql", "git", "aws"}
+
+    roadmap = client.get(f"/api/roadmap/{target['id']}?skill={skill}")
+    assert roadmap.status_code == 200
+
+    levels = roadmap.json["roadmap"]["tracks"][0]["levels"]
+    for level in levels:
+        complete = client.post(
+            f"/api/roadmap/{target['id']}/complete",
+            json={"levelId": level["id"], "skill": skill},
+        )
+        assert complete.status_code == 200
+
+    assert complete.json["skillCompleted"] is True
+    assert set(complete.json["skills"]) == initial_skills | {skill}

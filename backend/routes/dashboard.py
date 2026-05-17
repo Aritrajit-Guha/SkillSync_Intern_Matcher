@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 from flask import Blueprint, jsonify, request, session
 
 from backend.database.repository import (
@@ -27,6 +25,24 @@ def _require_user():
     return user, None
 
 
+def _profile_with_preferences(user, preferences=None):
+    profile = dict(user or {})
+    preferences = preferences or {}
+    for key in (
+        "domain",
+        "desiredLocation",
+        "jobType",
+        "stipendPreference",
+        "experiencePreference",
+        "experienceAmount",
+    ):
+        if preferences.get(key) not in (None, ""):
+            profile[key] = preferences[key]
+    if profile.get("desiredLocation"):
+        profile["preferredLocations"] = [profile["desiredLocation"]]
+    return profile
+
+
 @dashboard_bp.route("/dashboard", methods=["GET"])
 def get_dashboard():
     user, error = _require_user()
@@ -42,13 +58,32 @@ def get_dashboard():
         "recommended": recommendations["recommended"],
         "qualified": recommendations["qualified"],
         "stretch": recommendations["stretch"],
+        "readyMatches": recommendations["readyMatches"],
+        "growthPicks": recommendations["growthPicks"],
         "applications": applications,
     })
 
 
 @dashboard_bp.route("/recommendations/refresh", methods=["POST"])
 def refresh_recommendations():
-    return get_dashboard()
+    user, error = _require_user()
+    if error:
+        return error
+    preferences = request.get_json(silent=True) or {}
+    internships = load_internships()
+    recommendations = bucket_recommendations(_profile_with_preferences(user, preferences), internships)
+    applications = list_applications_for_user(user["id"])
+    return jsonify({
+        "profile": _public_user(user),
+        "catalog": recommendations["catalog"],
+        "recommended": recommendations["recommended"],
+        "qualified": recommendations["qualified"],
+        "stretch": recommendations["stretch"],
+        "readyMatches": recommendations["readyMatches"],
+        "growthPicks": recommendations["growthPicks"],
+        "applications": applications,
+        "preferences": preferences,
+    })
 
 
 @dashboard_bp.route("/applications", methods=["POST"])

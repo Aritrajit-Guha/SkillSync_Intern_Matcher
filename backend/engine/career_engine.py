@@ -18,37 +18,6 @@ except ImportError:
     SKLEARN_AVAILABLE = False
 
 
-ROADMAP_TOPICS = {
-    "python": ["Syntax and core data structures", "REST APIs and backend patterns", "Debugging and mini project"],
-    "javascript": ["Language fundamentals and ES6", "Async workflows and APIs", "Interactive app logic"],
-    "typescript": ["Types and interfaces", "Typed components and APIs", "Refactoring for safety"],
-    "react": ["Components and props", "State management and forms", "Build a responsive interface"],
-    "nodejs": ["Runtime and modules", "Express APIs and middleware", "Database-connected backend"],
-    "django": ["Models and routing", "Auth and forms", "CRUD app architecture"],
-    "flask": ["Routes and request handling", "Blueprints and validation", "API project build"],
-    "fastapi": ["Typed endpoints", "Validation and async patterns", "Production-style API structure"],
-    "spring-boot": ["Project setup", "REST services", "Layered architecture"],
-    "express": ["Routing and middleware", "Validation and controllers", "Backend mini service"],
-    "sql": ["Queries and filtering", "Joins and aggregations", "Schema thinking and practice"],
-    "mongodb": ["Documents and collections", "CRUD patterns", "Data modeling basics"],
-    "aws": ["Cloud foundations", "Deploying services", "Storage and compute workflows"],
-    "docker": ["Images and containers", "Compose and local environments", "Packaging a project"],
-    "git": ["Branching and commits", "Pull requests and reviews", "Conflict resolution"],
-    "linux": ["Terminal navigation", "Files and permissions", "Dev workflow commands"],
-    "machine-learning": ["Data prep and features", "Model training basics", "Evaluation and iteration"],
-    "data-analysis": ["Cleaning and exploration", "Visual trends and insights", "Case-study storytelling"],
-    "pandas": ["Series and DataFrames", "Filtering and grouping", "Messy dataset workflows"],
-    "numpy": ["Arrays and indexing", "Vectorized operations", "Numerical problem solving"],
-    "tensorflow": ["Tensors and models", "Training pipelines", "Experiment tracking"],
-    "html-css": ["Semantic structure", "Responsive layouts", "Polished UI styling"],
-    "java": ["OOP and collections", "Backend fundamentals", "Project structure and debugging"],
-    "cpp": ["Syntax and memory basics", "STL and problem solving", "Implementation practice"],
-    "figma": ["Design frames and hierarchy", "Components and design systems", "Developer handoff"],
-    "ui-ux": ["Research and user flows", "Wireframes and interaction design", "Usability review"],
-    "jira": ["Boards and tickets", "Sprint planning", "Team workflow hygiene"],
-    "problem-solving": ["Break down the problem", "Design a step-by-step approach", "Communicate tradeoffs clearly"],
-}
-
 QUALIFICATION_ORDER = {
     "class10": 1,
     "class12": 2,
@@ -80,21 +49,6 @@ def education_matches(profile, internship):
     candidate = profile.get("highestQualification", profile.get("education", ""))
     candidate_rank = QUALIFICATION_ORDER.get(candidate, 0)
     return any(candidate_rank >= QUALIFICATION_ORDER.get(item, 0) for item in accepted)
-
-
-def build_levels(skill_key):
-    topics = ROADMAP_TOPICS.get(
-        skill_key,
-        ["Foundations", "Guided practice", "Project checkpoint"],
-    )
-    return [
-        {
-            "id": f"{skill_key}-level-{index + 1}",
-            "label": f"Level {index + 1}",
-            "topic": topic,
-        }
-        for index, topic in enumerate(topics)
-    ]
 
 
 def _dataset_signature(internships):
@@ -141,13 +95,26 @@ def _query_for(profile):
     parts = []
     parts.extend(profile.get("skills", []))
     parts.extend(profile.get("sectors", []))
+    parts.append(profile.get("domain", ""))
     parts.append(profile.get("stream", ""))
     parts.append(profile.get("highestQualification", profile.get("education", "")))
     parts.extend(profile.get("preferredLocations", []))
+    if profile.get("desiredLocation"):
+        parts.append(profile["desiredLocation"])
+    if profile.get("jobType"):
+        parts.append(profile["jobType"])
     return " ".join(str(part) for part in parts if part)
 
 
 def _profile_coordinates(profile, internships):
+    desired_location = str(profile.get("desiredLocation", "")).lower()
+    if desired_location and "remote" not in desired_location:
+        for internship in internships:
+            location = internship.get("location", "").lower()
+            state = internship.get("state", "").lower()
+            if desired_location in location or desired_location in state or location.split(",")[0] in desired_location:
+                return internship.get("coordinates")
+
     coordinates = profile.get("coordinates")
     if isinstance(coordinates, dict) and coordinates.get("lat") is not None and coordinates.get("lng") is not None:
         return coordinates
@@ -183,6 +150,48 @@ def _experience_utility(experience):
     if "1-2" in text:
         return 0.74
     return 0.62
+
+
+def _text_match_utility(preference, value):
+    pref = str(preference or "").strip().lower()
+    actual = str(value or "").strip().lower()
+    if not pref or pref in {"any", "all"}:
+        return 0.65
+    if pref == actual or pref in actual or actual in pref:
+        return 1
+    return 0.2
+
+
+def _stipend_preference_utility(preference, internship):
+    pref = str(preference or "any").strip().lower()
+    if pref in {"", "any"}:
+        return 0.65
+    amount = salary_to_number(internship.get("stipendAmount", internship.get("stipend")))
+    stipend_text = str(internship.get("stipend", "")).lower()
+    is_paid = amount > 0 and "performance" not in stipend_text and "free" not in stipend_text
+    if pref in {"paid", "paid stipend", "stipend"}:
+        return 1 if is_paid else 0.08
+    if pref in {"free", "free/performance-based", "performance", "performance based"}:
+        return 1 if not is_paid else 0.42
+    return 0.65
+
+
+def _experience_preference_utility(profile, internship):
+    pref = str(profile.get("experiencePreference", "any")).strip().lower()
+    if pref in {"", "any"}:
+        return 0.65
+    text = str(internship.get("experience", "")).lower()
+    fresher_role = any(token in text for token in ["fresher", "entry", "0-6", "0-1", "2026", "2027"])
+    if pref in {"fresher", "freshers", "entry-level"}:
+        return 1 if fresher_role else 0.25
+    if pref in {"experienced", "experience"}:
+        amount = float(profile.get("experienceAmount") or 0)
+        if amount <= 0:
+            return 0.65 if fresher_role else 0.75
+        if "1-2" in text and amount >= 1:
+            return 1
+        return 0.45 if fresher_role else 0.72
+    return 0.65
 
 
 class ContentBasedInternshipRanker:
@@ -262,12 +271,26 @@ class ContentBasedInternshipRanker:
             distance_km = haversine_km(profile_coordinates, internship.get("coordinates"))
             distance_score = _distance_utility(distance_km, internship)
             qualification_score = 1 if education_matches(normalized_profile, internship) else 0
+            domain_score = _text_match_utility(
+                normalized_profile.get("domain") or normalized_profile.get("sector"),
+                internship.get("sector"),
+            )
+            job_type_score = _text_match_utility(normalized_profile.get("jobType"), internship.get("jobType"))
+            stipend_preference_score = _stipend_preference_utility(normalized_profile.get("stipendPreference"), internship)
+            experience_preference_score = _experience_preference_utility(normalized_profile, internship)
+            preference_score = (
+                (domain_score * 0.34)
+                + (job_type_score * 0.22)
+                + (stipend_preference_score * 0.22)
+                + (experience_preference_score * 0.22)
+            )
 
             blended = (
-                (ml_score * 0.38)
-                + (skill_coverage * 0.22)
-                + (quality_score * 0.22)
-                + (distance_score * 0.13)
+                (ml_score * 0.30)
+                + (skill_coverage * 0.20)
+                + (quality_score * 0.19)
+                + (distance_score * 0.14)
+                + (preference_score * 0.12)
                 + (qualification_score * 0.05)
             )
             score = round(max(0, min(blended * 100, 100)))
@@ -290,6 +313,10 @@ class ContentBasedInternshipRanker:
                     "location": round(distance_score * 20, 2),
                     "distance": round(distance_score * 12, 2),
                     "qualification": round(qualification_score * 15, 2),
+                    "domainPreference": round(domain_score * 100, 2),
+                    "jobTypePreference": round(job_type_score * 100, 2),
+                    "stipendPreference": round(stipend_preference_score * 100, 2),
+                    "experiencePreference": round(experience_preference_score * 100, 2),
                     "opportunityBoost": 0,
                 },
             })
@@ -311,13 +338,19 @@ def score_internship_for_profile(profile, internship):
 
 def bucket_recommendations(profile, internships, limit=5):
     scored = _RANKER.rank(profile, internships)
-    catalog = [item for item in scored if education_matches(profile or {}, item)]
+    catalog = scored
     recommended = catalog[:limit]
-    qualified = [item for item in scored if item["isQualified"]][:limit]
-    stretch = [item for item in scored if item.get("missingSkills") and education_matches(profile or {}, item)][:limit]
+    ready_matches = [item for item in scored if item["isQualified"]][:limit]
+    growth_picks = [
+        item
+        for item in scored
+        if 1 <= len(item.get("missingSkills", [])) <= 2 and education_matches(profile or {}, item)
+    ][:limit]
     return {
         "catalog": catalog,
         "recommended": recommended,
-        "qualified": qualified,
-        "stretch": stretch,
+        "qualified": ready_matches,
+        "stretch": growth_picks,
+        "readyMatches": ready_matches,
+        "growthPicks": growth_picks,
     }

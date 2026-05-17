@@ -12,15 +12,15 @@
 
 :root,
 :root[data-theme='dark'] {
-  --bg: #07111f;
-  --bg-alt: #0d1a2c;
-  --surface: rgba(13, 26, 44, 0.76);
-  --surface-strong: rgba(11, 20, 36, 0.92);
-  --line: rgba(129, 179, 255, 0.18);
-  --text: #f2f7ff;
-  --muted: #9eb4d1;
-  --accent: #6df7c1;
-  --accent-2: #56b8ff;
+  --bg: #0b0d10;
+  --bg-alt: #162019;
+  --surface: rgba(17, 25, 24, 0.78);
+  --surface-strong: rgba(14, 18, 18, 0.94);
+  --line: rgba(242, 210, 125, 0.2);
+  --text: #f6f3ea;
+  --muted: #b8c0b5;
+  --accent: #f2d27d;
+  --accent-2: #71d7b8;
   --danger: #ff7292;
 }
 
