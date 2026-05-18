@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SOURCE = "excel"
 SKILL_COLUMNS = [f"skill_{index}" for index in range(1, 6)]
 PERK_COLUMNS = [f"perk_{index}" for index in range(1, 4)]
@@ -229,7 +230,10 @@ def infer_sector(title, skills):
 
 def _excel_path():
     value = os.getenv("INTERNSHIP_EXCEL_PATH", "").strip()
-    return Path(value) if value else None
+    if not value:
+        return None
+    path = Path(value)
+    return path if path.is_absolute() else PROJECT_ROOT / path
 
 
 def active_source():

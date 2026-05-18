@@ -163,6 +163,8 @@ def find_document(documents, file_id):
 
 
 def _should_use_mongo_storage():
+    if os.getenv("FORCE_FILE_STORE", "").strip().lower() in {"1", "true", "yes"}:
+        return False
     mode = os.getenv("UPLOAD_STORAGE", "auto").strip().lower()
     if mode in {"mongodb", "mongo", "gridfs", "db"}:
         return True

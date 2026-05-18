@@ -9,7 +9,7 @@ from backend.engine.internship_source import (
 )
 
 
-PROVIDED_WORKBOOK = Path(r"D:\Dada Programs\New folder\merged_normalized_dataset.xlsx")
+PROVIDED_WORKBOOK = Path(__file__).resolve().parents[1] / "data" / "merged_normalized_dataset.xlsx"
 
 
 def test_excel_source_normalizes_fixture_rows():
@@ -35,7 +35,7 @@ def test_metadata_comes_from_current_source():
 
 def test_provided_dummy_workbook_shape(monkeypatch):
     if not PROVIDED_WORKBOOK.exists():
-        pytest.skip("Provided local dummy workbook is not available on this machine.")
+        pytest.skip("Repo-local dummy workbook is not available.")
     monkeypatch.setenv("INTERNSHIP_EXCEL_PATH", str(PROVIDED_WORKBOOK))
     clear_internship_cache()
     internships = load_internships(force_reload=True)
