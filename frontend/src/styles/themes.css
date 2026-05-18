@@ -1,38 +1,39 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --font-display: 'Sora', sans-serif;
-  --font-body: 'Space Grotesk', sans-serif;
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'Inter', 'Space Grotesk', system-ui, sans-serif;
   --radius-xl: 28px;
   --radius-lg: 20px;
   --radius-md: 14px;
-  --shadow-glow: 0 24px 80px rgba(6, 12, 30, 0.32);
+  --shadow-glow: 0 28px 80px rgba(37, 28, 12, 0.16);
   --transition: 180ms ease;
 }
 
 :root,
-:root[data-theme='dark'] {
-  --bg: #07111f;
-  --bg-alt: #0d1a2c;
-  --surface: rgba(13, 26, 44, 0.76);
-  --surface-strong: rgba(11, 20, 36, 0.92);
-  --line: rgba(129, 179, 255, 0.18);
-  --text: #f2f7ff;
-  --muted: #9eb4d1;
-  --accent: #6df7c1;
-  --accent-2: #56b8ff;
-  --danger: #ff7292;
+:root[data-theme='light'] {
+  --bg: #f7f1e4;
+  --bg-alt: #fffaf0;
+  --surface: rgba(255, 252, 244, 0.88);
+  --surface-strong: #fffaf0;
+  --line: rgba(177, 134, 60, 0.34);
+  --text: #11100d;
+  --muted: #6d6456;
+  --accent: #b98b3e;
+  --accent-2: #0d0d0b;
+  --danger: #8f2436;
 }
 
-:root[data-theme='light'] {
-  --bg: #f4f8ff;
-  --bg-alt: #e7f0fb;
-  --surface: rgba(255, 255, 255, 0.9);
-  --surface-strong: #ffffff;
-  --line: rgba(24, 62, 110, 0.16);
-  --text: #0f213f;
-  --muted: #4a6286;
-  --accent: #136df0;
-  --accent-2: #0fb38d;
-  --danger: #df4e75;
+:root[data-theme='dark'] {
+  --bg: #030303;
+  --bg-alt: #0b0906;
+  --surface: rgba(13, 12, 10, 0.9);
+  --surface-strong: #0f0d09;
+  --line: rgba(236, 191, 93, 0.38);
+  --text: #fff7e6;
+  --muted: #b7aa91;
+  --accent: #ffd56b;
+  --accent-2: #00f0ff;
+  --danger: #ff4d7d;
+  --shadow-glow: 0 28px 90px rgba(0, 240, 255, 0.12);
 }

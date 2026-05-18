@@ -1,26 +1,65 @@
+import json
 import uuid
 
 from flask import Blueprint, jsonify, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from backend.database.repository import create_user, find_user_by_email, find_user_by_id, update_user
+from backend.services.uploads import (
+    sanitize_user,
+    save_uploaded_document,
+    validate_aadhaar,
+    visible_document_kinds,
+)
 
 auth_bp = Blueprint("auth", __name__)
 
 
 def _public_user(user):
-    if not user:
-        return None
-    clean = dict(user)
-    clean.pop("password_hash", None)
-    return clean
+    return sanitize_user(user)
 
 
 def _require_body():
+    if request.content_type and request.content_type.startswith("multipart/form-data"):
+        raw_profile = request.form.get("profile") or "{}"
+        try:
+            data = json.loads(raw_profile)
+        except json.JSONDecodeError:
+            return None, (jsonify({"error": "Invalid profile JSON"}), 400)
+        return data, None
     data = request.get_json(silent=True)
     if not data:
         return None, (jsonify({"error": "Invalid JSON body"}), 400)
     return data, None
+
+
+def _social_links(data):
+    links = dict(data.get("socialLinks") or {})
+    if data.get("githubUrl"):
+        links["github"] = data["githubUrl"]
+    if data.get("linkedinUrl"):
+        links["linkedin"] = data["linkedinUrl"]
+    return {
+        "github": links.get("github", ""),
+        "linkedin": links.get("linkedin", ""),
+    }
+
+
+def _registration_documents(user_id, data):
+    if not request.files:
+        return data.get("documents", {}) if isinstance(data.get("documents"), dict) else {}
+
+    aadhaar_number = data.get("aadhaarNumber", "")
+    if not validate_aadhaar(aadhaar_number):
+        raise ValueError("A valid 12-digit Aadhaar number is required")
+
+    documents = {}
+    for kind in visible_document_kinds(data.get("highestQualification")):
+        file_storage = request.files.get(kind)
+        if not file_storage:
+            raise ValueError(f"{kind} upload is required")
+        documents[kind] = save_uploaded_document(user_id, kind, file_storage)
+    return documents
 
 
 @auth_bp.route("/session", methods=["POST"])
@@ -51,13 +90,25 @@ def register():
         return jsonify({"error": "Email and password are required"}), 400
     if find_user_by_email(email):
         return jsonify({"error": "An account already exists for this email"}), 409
+    if data.get("aadhaarNumber") and not validate_aadhaar(data.get("aadhaarNumber")):
+        return jsonify({"error": "A valid 12-digit Aadhaar number is required"}), 400
+
+    user_id = str(uuid.uuid4())
+    try:
+        documents = _registration_documents(user_id, data)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
 
     user = create_user({
+        "id": user_id,
         "email": email,
         "password_hash": generate_password_hash(password),
         "fullName": data.get("fullName", ""),
         "phone": data.get("phone", ""),
         "photo": data.get("photo", ""),
+        "aadhaarNumber": data.get("aadhaarNumber", ""),
+        "socialLinks": _social_links(data),
+        "documents": documents,
         "highestQualification": data.get("highestQualification", ""),
         "secondary": data.get("secondary", {}),
         "higherSecondary": data.get("higherSecondary", {}),

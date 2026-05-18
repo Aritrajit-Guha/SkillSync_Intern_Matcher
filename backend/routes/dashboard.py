@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 from flask import Blueprint, jsonify, request, session
 
 from backend.database.repository import (
@@ -8,16 +6,13 @@ from backend.database.repository import (
     save_application,
 )
 from backend.engine.career_engine import bucket_recommendations, load_internships
+from backend.services.uploads import sanitize_documents, sanitize_user
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
 
 def _public_user(user):
-    if not user:
-        return None
-    clean = dict(user)
-    clean.pop("password_hash", None)
-    return clean
+    return sanitize_user(user)
 
 
 def _require_user():
@@ -25,6 +20,24 @@ def _require_user():
     if not user:
         return None, (jsonify({"error": "Unauthorized"}), 401)
     return user, None
+
+
+def _profile_with_preferences(user, preferences=None):
+    profile = dict(user or {})
+    preferences = preferences or {}
+    for key in (
+        "domain",
+        "desiredLocation",
+        "jobType",
+        "stipendPreference",
+        "experiencePreference",
+        "experienceAmount",
+    ):
+        if preferences.get(key) not in (None, ""):
+            profile[key] = preferences[key]
+    if profile.get("desiredLocation"):
+        profile["preferredLocations"] = [profile["desiredLocation"]]
+    return profile
 
 
 @dashboard_bp.route("/dashboard", methods=["GET"])
@@ -42,13 +55,32 @@ def get_dashboard():
         "recommended": recommendations["recommended"],
         "qualified": recommendations["qualified"],
         "stretch": recommendations["stretch"],
+        "readyMatches": recommendations["readyMatches"],
+        "growthPicks": recommendations["growthPicks"],
         "applications": applications,
     })
 
 
 @dashboard_bp.route("/recommendations/refresh", methods=["POST"])
 def refresh_recommendations():
-    return get_dashboard()
+    user, error = _require_user()
+    if error:
+        return error
+    preferences = request.get_json(silent=True) or {}
+    internships = load_internships()
+    recommendations = bucket_recommendations(_profile_with_preferences(user, preferences), internships)
+    applications = list_applications_for_user(user["id"])
+    return jsonify({
+        "profile": _public_user(user),
+        "catalog": recommendations["catalog"],
+        "recommended": recommendations["recommended"],
+        "qualified": recommendations["qualified"],
+        "stretch": recommendations["stretch"],
+        "readyMatches": recommendations["readyMatches"],
+        "growthPicks": recommendations["growthPicks"],
+        "applications": applications,
+        "preferences": preferences,
+    })
 
 
 @dashboard_bp.route("/applications", methods=["POST"])
@@ -66,20 +98,40 @@ def apply_for_internship():
     if not internship:
         return jsonify({"error": "Internship not found"}), 404
 
+    social_links = data.get("socialLinks") or user.get("socialLinks", {})
+    documents = data.get("documents") or sanitize_documents(user.get("documents", {}))
+    application_payload = {
+        "fullName": data.get("fullName", user.get("fullName", "")),
+        "email": data.get("email", user.get("email", "")),
+        "phone": data.get("phone", user.get("phone", "")),
+        "aadhaarNumber": data.get("aadhaarNumber", user.get("aadhaarNumber", "")),
+        "address": data.get("address", user.get("address", "")),
+        "preferredLocations": data.get("preferredLocations", user.get("preferredLocations", [])),
+        "highestQualification": data.get("highestQualification", user.get("highestQualification", "")),
+        "secondary": data.get("secondary", user.get("secondary", {})),
+        "higherSecondary": data.get("higherSecondary", user.get("higherSecondary", {})),
+        "diploma": data.get("diploma", user.get("diploma", {})),
+        "graduation": data.get("graduation", user.get("graduation", {})),
+        "postGraduation": data.get("postGraduation", user.get("postGraduation", {})),
+        "skills": data.get("skills", user.get("skills", [])),
+        "socialLinks": {
+            "github": social_links.get("github", data.get("githubProfile", "")),
+            "linkedin": social_links.get("linkedin", data.get("linkedinProfile", "")),
+        },
+        "githubProfile": social_links.get("github", data.get("githubProfile", "")),
+        "linkedinProfile": social_links.get("linkedin", data.get("linkedinProfile", "")),
+        "documents": documents,
+        "resumeName": data.get("resumeName", documents.get("resume", {}).get("originalName", "")),
+        "resumeText": data.get("resumeText", ""),
+        "coverNote": data.get("coverNote", ""),
+    }
+
     application = save_application({
         "user_id": user["id"],
         "internship_id": internship_id,
         "internship_title": internship.get("title"),
         "organization": internship.get("org"),
         "status": "submitted",
-        "payload": {
-            "fullName": data.get("fullName", user.get("fullName", "")),
-            "email": user.get("email", ""),
-            "githubProfile": data.get("githubProfile", ""),
-            "phone": data.get("phone", user.get("phone", "")),
-            "resumeName": data.get("resumeName", ""),
-            "resumeText": data.get("resumeText", ""),
-            "coverNote": data.get("coverNote", ""),
-        },
+        "payload": application_payload,
     })
     return jsonify({"application": application, "submitted": True}), 201

@@ -18,9 +18,11 @@ from backend.routes.progress import progress_bp
 from backend.routes.recommend import recommend_bp
 from backend.routes.roadmap import roadmap_bp
 from backend.routes.profile import profile_bp
+from backend.routes.uploads import uploads_bp
 from backend.database.repository import ensure_collections, storage_mode
 
-load_dotenv()
+BACKEND_ENV_PATH = Path(__file__).resolve().parent / ".env"
+load_dotenv(BACKEND_ENV_PATH, override=True)
 
 
 def create_app():
@@ -38,6 +40,7 @@ def create_app():
     app.register_blueprint(profile_bp, url_prefix="/api")
     app.register_blueprint(dashboard_bp, url_prefix="/api")
     app.register_blueprint(roadmap_bp, url_prefix="/api")
+    app.register_blueprint(uploads_bp, url_prefix="/api")
 
     @app.route("/api/health")
     def health():

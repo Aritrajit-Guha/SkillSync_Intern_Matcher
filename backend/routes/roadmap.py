@@ -1,9 +1,8 @@
-from copy import deepcopy
-
 from flask import Blueprint, jsonify, request, session
 
 from backend.database.repository import find_user_by_id, get_roadmap_progress, save_roadmap_progress, update_user
-from backend.engine.career_engine import build_levels, load_internships, score_internship_for_profile
+from backend.engine.career_engine import load_internships, score_internship_for_profile
+from backend.engine.gemini_roadmap import build_levels_from_topics, generate_skill_topic_bundle
 
 roadmap_bp = Blueprint("roadmap", __name__)
 
@@ -15,80 +14,118 @@ def _require_user():
     return user, None
 
 
-def _build_progress(user_id, internship):
-    existing = get_roadmap_progress(user_id, internship["id"]) or {}
-    completed = set(existing.get("completedLevelIds", []))
-    missing_skills = score_internship_for_profile(find_user_by_id(user_id), internship)["missingSkills"]
-    skill_tracks = []
-    for skill in missing_skills:
-        levels = []
-        base_levels = build_levels(skill)
-        for index, level in enumerate(base_levels):
-            level_id = f"{internship['id']}::{level['id']}"
-            is_completed = level_id in completed
-            unlocked = index == 0 or f"{internship['id']}::{base_levels[index - 1]['id']}" in completed
-            levels.append({
-                **level,
-                "id": level_id,
-                "completed": is_completed,
-                "unlocked": unlocked,
-            })
-        skill_tracks.append({
-            "skill": skill,
-            "levels": levels,
-            "completed": all(level["completed"] for level in levels),
-        })
+def _roadmap_doc(user_id, internship_id):
+    existing = get_roadmap_progress(user_id, internship_id) or {}
     return {
         "user_id": user_id,
-        "internship_id": internship["id"],
+        "internship_id": internship_id,
+        "skillRoadmaps": existing.get("skillRoadmaps", {}),
+    }
+
+
+def _save_skill_state(user_id, internship, skill, state):
+    doc = _roadmap_doc(user_id, internship["id"])
+    doc["skillRoadmaps"][skill] = state
+    return save_roadmap_progress(doc)
+
+
+def _levels_for_skill(user, internship, skill, force_refresh=False):
+    doc = _roadmap_doc(user["id"], internship["id"])
+    saved = doc["skillRoadmaps"].get(skill)
+    if saved and saved.get("levels") and not force_refresh and not _should_retry_cached_fallback(saved):
+        return (
+            saved["levels"],
+            saved.get("source", "cached"),
+            saved.get("sourceDetail", ""),
+            saved.get("rawPreview", ""),
+        )
+    topics, source, source_detail, raw_preview = generate_skill_topic_bundle(skill, internship=internship, user=user)
+    return build_levels_from_topics(skill, topics), source, source_detail, raw_preview
+
+
+def _should_retry_cached_fallback(saved):
+    if saved.get("source") != "fallback":
+        return False
+    if saved.get("completedLevelIds"):
+        return False
+    detail = str(saved.get("sourceDetail", "")).lower()
+    transient_markers = (
+        "http_429",
+        "quota",
+        "exhausted",
+        "resource_exhausted",
+        "too many requests",
+        "missing_api_key",
+        "timeout",
+        "url_error",
+        "os_error",
+    )
+    return any(marker in detail for marker in transient_markers)
+
+
+def _build_progress(user, internship, skill, force_refresh=False):
+    doc = _roadmap_doc(user["id"], internship["id"])
+    saved = {} if force_refresh else doc["skillRoadmaps"].get(skill, {})
+    retrying_cached_fallback = bool(saved and _should_retry_cached_fallback(saved))
+    base_levels, source, source_detail, raw_preview = _levels_for_skill(user, internship, skill, force_refresh=force_refresh)
+    completed = set() if force_refresh else set(saved.get("completedLevelIds", []))
+    levels = []
+    for index, level in enumerate(base_levels):
+        level_id = f"{internship['id']}::{skill}::{level['id']}"
+        previous_id = f"{internship['id']}::{skill}::{base_levels[index - 1]['id']}" if index > 0 else None
+        is_completed = level_id in completed
+        unlocked = index == 0 or previous_id in completed
+        levels.append({
+            **level,
+            "id": level_id,
+            "completed": is_completed,
+            "unlocked": unlocked,
+        })
+    track = {
+        "skill": skill,
+        "levels": levels,
+        "completed": all(level["completed"] for level in levels),
+    }
+    state = {
+        "skill": skill,
+        "levels": base_levels,
         "completedLevelIds": list(completed),
-        "tracks": skill_tracks,
+        "source": source if retrying_cached_fallback else saved.get("source", source),
+        "sourceDetail": source_detail if retrying_cached_fallback else saved.get("sourceDetail", source_detail),
+        "rawPreview": raw_preview if retrying_cached_fallback else saved.get("rawPreview", raw_preview),
+    }
+    if force_refresh or retrying_cached_fallback or not saved.get("levels"):
+        _save_skill_state(user["id"], internship, skill, state)
+    return {
+        "user_id": user["id"],
+        "internship_id": internship["id"],
+        "skill": skill,
+        "completedLevelIds": list(completed),
+        "tracks": [track],
+        "source": state["source"],
+        "sourceDetail": state["sourceDetail"],
+        "rawPreview": state["rawPreview"],
     }
 
 
 def _chatbot_reply(user, internship, roadmap, message):
-    scored = score_internship_for_profile(user, internship)
-    missing_skills = scored["missingSkills"]
-    if not missing_skills:
-        return {
-            "reply": (
-                f"You already qualify for {internship['title']} at {internship['org']}. "
-                "Your next move is to polish your resume summary, prepare role-specific interview answers, "
-                "and apply directly."
-            ),
-            "suggestions": [
-                "Give me an interview preparation checklist",
-                "Show a final application strategy",
-            ],
-        }
-
-    track_summaries = []
-    for track in roadmap["tracks"]:
-        topics = ", ".join(level["topic"] for level in track["levels"])
-        track_summaries.append(f"{track['skill']}: {topics}")
+    track = roadmap["tracks"][0]
+    topics = ", ".join(level["topic"] for level in track["levels"])
 
     prompt = (message or "").lower()
     if any(keyword in prompt for keyword in ["order", "first", "start", "priority"]):
         reply = (
-            f"For {internship['title']} at {internship['org']}, start with {missing_skills[0]} first because it unlocks the most immediate gap. "
-            f"Then move through the remaining skills in this order: {', '.join(missing_skills)}. "
-            "Treat each skill as a separate mission and only move ahead after finishing the previous one."
+            f"For {internship['title']} at {internship['org']}, start with the first unlocked topic in {track['skill']}. "
+            "Complete topics in order because each locked level depends on the previous one."
         )
     elif any(keyword in prompt for keyword in ["day", "week", "plan", "schedule"]):
         reply = (
-            f"Here is a simple roadmap plan for {internship['title']}: "
-            + " ".join(
-                f"Week {index + 1}: focus on {track['skill']} through {', '.join(level['topic'] for level in track['levels'])}."
-                for index, track in enumerate(roadmap["tracks"])
-            )
+            f"Use one topic per focused study block for {track['skill']}: {topics}."
         )
     else:
         reply = (
-            f"To become eligible for {internship['title']} at {internship['org']}, focus only on these missing skills: "
-            f"{', '.join(missing_skills)}. "
-            "Your roadmap topics are: "
-            + " | ".join(track_summaries)
-            + ". Complete each skill track level by level, and your profile will update automatically as you clear them."
+            f"Your current {track['skill']} syllabus is: {topics}. "
+            "Mark each unlocked topic complete to open the next level."
         )
 
     return {
@@ -111,16 +148,22 @@ def get_roadmap(internship_id):
     if not internship:
         return jsonify({"error": "Internship not found"}), 404
 
+    skill = (request.args.get("skill") or "").strip()
+    if not skill:
+        return jsonify({"error": "skill query parameter is required"}), 400
+
     scored = score_internship_for_profile(user, internship)
-    if len(scored.get("missingSkills", [])) == 0:
+    if skill not in scored.get("missingSkills", []) and skill not in user.get("skills", []):
         return jsonify({
-            "error": "Roadmap is only available for internships with missing skills"
+            "error": "Roadmap is only available for a missing skill on this internship"
         }), 400
 
-    progress = _build_progress(user["id"], internship)
+    force_refresh = request.args.get("refresh") in {"1", "true", "yes"}
+    progress = _build_progress(user, internship, skill, force_refresh=force_refresh)
     return jsonify({
-        "internship": internship,
+        "internship": scored,
         "roadmap": progress,
+        "skill": skill,
     })
 
 
@@ -138,7 +181,15 @@ def complete_roadmap_level(internship_id):
     if not internship:
         return jsonify({"error": "Internship not found"}), 404
 
-    progress = _build_progress(user["id"], internship)
+    skill = data.get("skill")
+    if not skill and "::" in data["levelId"]:
+        parts = data["levelId"].split("::")
+        if len(parts) >= 3:
+            skill = parts[1]
+    if not skill:
+        return jsonify({"error": "skill is required"}), 400
+
+    progress = _build_progress(user, internship, skill)
     target_level = next(
         (
             level
@@ -162,20 +213,37 @@ def complete_roadmap_level(internship_id):
     completed = set(progress["completedLevelIds"])
     completed.add(data["levelId"])
     progress["completedLevelIds"] = list(completed)
-    saved = save_roadmap_progress(progress)
+    state = {
+        "skill": skill,
+        "levels": [
+            {
+                "id": level["id"].split("::")[-1],
+                "label": level["label"],
+                "topic": level["topic"],
+            }
+            for level in progress["tracks"][0]["levels"]
+        ],
+        "completedLevelIds": list(completed),
+        "source": progress.get("source", "cached"),
+        "sourceDetail": progress.get("sourceDetail", ""),
+        "rawPreview": progress.get("rawPreview", ""),
+    }
+    _save_skill_state(user["id"], internship, skill, state)
 
-    latest = _build_progress(user["id"], internship)
+    latest = _build_progress(user, internship, skill)
     updated_skills = set(user.get("skills", []))
-    for track in latest["tracks"]:
-        if track["completed"]:
-            updated_skills.add(track["skill"])
+    skill_completed = latest["tracks"][0]["completed"]
+    if skill_completed:
+        updated_skills.add(skill)
     if updated_skills != set(user.get("skills", [])):
         user = update_user(user["id"], {"skills": sorted(updated_skills)})
 
     return jsonify({
         "saved": True,
-        "roadmap": _build_progress(user["id"], internship),
+        "roadmap": latest,
         "skills": user.get("skills", []),
+        "skill": skill,
+        "skillCompleted": skill_completed,
     })
 
 
@@ -192,6 +260,9 @@ def chat_roadmap(internship_id):
     if not internship:
         return jsonify({"error": "Internship not found"}), 404
 
-    roadmap = _build_progress(user["id"], internship)
+    skill = (data.get("skill") or request.args.get("skill") or "").strip()
+    if not skill:
+        return jsonify({"error": "skill is required"}), 400
+    roadmap = _build_progress(user, internship, skill)
     response = _chatbot_reply(user, internship, roadmap, message)
     return jsonify(response)

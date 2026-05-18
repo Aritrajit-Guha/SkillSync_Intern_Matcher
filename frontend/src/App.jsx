@@ -8,6 +8,7 @@ import {
   LOCATIONS,
   NAV_ITEMS,
   QUALIFICATIONS,
+  SKILL_LABELS,
   SKILL_OPTIONS,
   THEMES,
 } from './data/catalog.js';
@@ -74,8 +75,18 @@ const ACADEMIC_SECTIONS = [
   },
 ];
 
+const DOCUMENT_LABELS = {
+  resume: 'Resume',
+  secondary: 'Class 10 marksheet',
+  higherSecondary: 'Class 12 marksheet',
+  diploma: 'Diploma marksheet',
+  graduation: 'Graduation marksheet',
+  postGraduation: 'Post graduation marksheet',
+};
+
 function readRoute() {
-  return window.location.pathname === '/' ? '/home' : window.location.pathname;
+  const path = window.location.pathname === '/' ? '/home' : window.location.pathname;
+  return path === '/qualified' ? '/ready-matches' : path;
 }
 
 function goTo(path) {
@@ -92,7 +103,11 @@ function emptyRegisterForm() {
     password: '',
     phone: '',
     photo: '',
+    aadhaarNumber: '',
     address: '',
+    socialLinks: { github: '', linkedin: '' },
+    documents: {},
+    documentFiles: {},
     highestQualification: 'graduation',
     preferredLocations: ['Remote - India'],
     skills: [],
@@ -116,9 +131,62 @@ function getVisibleAcademicSections(highestQualification) {
   });
 }
 
+function getRequiredDocumentKinds(highestQualification) {
+  return ['resume', ...getVisibleAcademicSections(highestQualification).map(section => section.key)];
+}
+
+function getDocumentName(form, kind) {
+  return form?.documentFiles?.[kind]?.name || form?.documents?.[kind]?.originalName || '';
+}
+
+function hasDocument(form, kind) {
+  return Boolean(getDocumentName(form, kind));
+}
+
+function maskAadhaar(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits.length >= 4 ? `XXXX XXXX ${digits.slice(-4)}` : 'Not added';
+}
+
+function isValidAadhaar(value) {
+  return String(value || '').replace(/\D/g, '').length === 12;
+}
+
+function getGithubUsername(url) {
+  const value = String(url || '').trim();
+  if (!value) return '';
+  const normalized = value.includes('github.com') ? value : `https://github.com/${value}`;
+  try {
+    const parsed = new URL(normalized);
+    if (!parsed.hostname.includes('github.com')) return '';
+    return parsed.pathname.split('/').filter(Boolean)[0] || '';
+  } catch {
+    return value.replace(/^@/, '').split('/').filter(Boolean)[0] || '';
+  }
+}
+
+function buildRegistrationFormData(form) {
+  const payload = sanitizeProfilePayload(form);
+  delete payload.documentFiles;
+  const body = new FormData();
+  body.append('profile', JSON.stringify(payload));
+  for (const kind of getRequiredDocumentKinds(form.highestQualification)) {
+    const file = form.documentFiles?.[kind];
+    if (file) body.append(kind, file);
+  }
+  return body;
+}
+
 function sanitizeProfilePayload(form) {
   return {
     ...form,
+    documentFiles: undefined,
+    aadhaarNumber: String(form.aadhaarNumber || '').replace(/\D/g, ''),
+    socialLinks: {
+      github: form.socialLinks?.github || '',
+      linkedin: form.socialLinks?.linkedin || '',
+    },
+    documents: form.documents || {},
     preferredLocations: form.preferredLocations?.length ? [form.preferredLocations[0]] : [],
     skills: Array.from(new Set(form.skills || [])),
     secondary: form.secondary || {},
@@ -129,37 +197,118 @@ function sanitizeProfilePayload(form) {
   };
 }
 
-function isRegisterFormComplete(form) {
-  if (!form.fullName?.trim() || !form.email?.trim() || !form.password?.trim() || !form.phone?.trim() || !form.address?.trim()) {
-    return false;
+function getRegistrationMissingItems(form) {
+  const missing = [];
+  if (!form.fullName?.trim()) missing.push('Full name');
+  if (!form.email?.trim()) missing.push('Email');
+  if (!form.password?.trim()) missing.push('Password');
+  if (!form.phone?.trim()) missing.push('Phone number');
+  if (!isValidAadhaar(form.aadhaarNumber)) missing.push('Valid 12-digit Aadhaar number');
+  if (!form.address?.trim()) missing.push('Address');
+  if (!form.highestQualification) missing.push('Highest qualification');
+  if (!form.preferredLocations?.[0]) missing.push('Preferred location');
+  if (!(form.skills || []).length) missing.push('At least one skill');
+  for (const kind of getRequiredDocumentKinds(form.highestQualification)) {
+    if (!hasDocument(form, kind)) missing.push(DOCUMENT_LABELS[kind]);
   }
-  if (!form.highestQualification) return false;
-  if (!form.preferredLocations?.[0]) return false;
-  if (!(form.skills || []).length) return false;
   const visibleSections = getVisibleAcademicSections(form.highestQualification);
   for (const section of visibleSections) {
     for (const field of section.fields) {
       const value = form?.[section.key]?.[field.key];
-      if (!String(value || '').trim()) return false;
+      if (!String(value || '').trim()) missing.push(`${section.title}: ${field.label}`);
     }
   }
-  return true;
+  return missing;
 }
 
-const INTERNSHIP_TABS = [
-  { key: 'top5', label: 'Top 5 internships' },
-];
-const ROADMAP_SESSION_KEY = 'active_roadmap_internship_id';
+function formatMissingItems(missing) {
+  if (!missing.length) return '';
+  if (missing.length <= 4) {
+    return `Please complete: ${missing.join(', ')}.`;
+  }
+  return `Please complete: ${missing.slice(0, 4).join(', ')} and ${missing.length - 4} more.`;
+}
 
-function groupCatalogByRole(items) {
-  return (items || []).reduce((groups, internship) => {
-    const role = internship.title || 'Other internships';
-    if (!groups[role]) {
-      groups[role] = [];
-    }
-    groups[role].push(internship);
-    return groups;
-  }, {});
+const EMPTY_DASHBOARD = {
+  catalog: [],
+  recommended: [],
+  qualified: [],
+  stretch: [],
+  readyMatches: [],
+  growthPicks: [],
+  applications: [],
+};
+
+const EMPTY_PREFERENCES = {
+  domain: 'any',
+  desiredLocation: '',
+  jobType: 'any',
+  stipendPreference: 'Any',
+  experiencePreference: 'Any',
+  experienceAmount: '',
+};
+
+const EMPTY_HOME_FILTERS = {
+  domain: 'all',
+  location: 'all',
+  jobType: 'all',
+  experience: 'all',
+  stipendType: 'all',
+  fit: 'all',
+};
+
+const ROADMAP_SESSION_KEY = 'active_roadmap_context';
+
+function getStoredRoadmapContext() {
+  const context = Storage.get(ROADMAP_SESSION_KEY, null);
+  if (!context || typeof context !== 'object' || !context.internshipId || !context.skill) {
+    return null;
+  }
+  return context;
+}
+
+function normalizeDashboard(data = {}) {
+  return {
+    ...EMPTY_DASHBOARD,
+    ...data,
+    catalog: data.catalog || [],
+    recommended: data.recommended || data.readyMatches || [],
+    qualified: data.qualified || data.readyMatches || [],
+    stretch: data.stretch || data.growthPicks || [],
+    readyMatches: data.readyMatches || data.qualified || [],
+    growthPicks: data.growthPicks || data.stretch || [],
+    applications: data.applications || [],
+  };
+}
+
+function getStipendType(internship) {
+  const amount = Number(internship?.stipendAmount || 0);
+  const text = String(internship?.stipend || '').toLowerCase();
+  return amount > 0 && !text.includes('performance') && !text.includes('free') ? 'paid' : 'free';
+}
+
+function getFitLabel(internship) {
+  const missing = internship?.missingSkills?.length || 0;
+  const score = internship?.score || 0;
+  if (!missing && score >= 78) return 'Highly aligned';
+  if (!missing) return 'Good fit';
+  if (missing <= 2) return 'Stretch';
+  return 'Not ideal';
+}
+
+function logGeminiRoadmapDebug(data, context = 'roadmap') {
+  const raw = data?.roadmap?.rawPreview;
+  if (!raw) return;
+  console.groupCollapsed(`[SkillSync] Gemini raw response (${context})`);
+  console.log('source:', data.roadmap.source);
+  console.log('sourceDetail:', data.roadmap.sourceDetail || '');
+  console.log('skill:', data.skill);
+  try {
+    console.log('payload:', JSON.parse(raw));
+  } catch {
+    console.log('payload:', raw);
+  }
+  console.groupEnd();
 }
 
 function getNextUnlockedLevel(roadmap) {
@@ -194,7 +343,25 @@ function getXpBadge(progress) {
   return { xp, badge: 'Bronze' };
 }
 
-function renderAcademicSections(form, bindNested) {
+function renderDocumentPicker(form, kind, onDocumentSelect, disabled = false) {
+  return (
+    <label className="field block full document-picker">
+      <span>{DOCUMENT_LABELS[kind]} *</span>
+      <input
+        type="file"
+        accept={kind === 'resume' ? '.pdf,.doc,.docx' : '.pdf,.jpg,.jpeg,.png'}
+        disabled={disabled}
+        onChange={event => onDocumentSelect?.(kind, event.target.files?.[0])}
+      />
+      <p className="muted-copy resume-label">
+        {getDocumentName(form, kind) ? `Selected: ${getDocumentName(form, kind)}` : 'No file selected yet.'}
+      </p>
+    </label>
+  );
+}
+
+function renderAcademicSections(form, bindNested, options = {}) {
+  const { showDocuments = false, onDocumentSelect, disabled = false } = options;
   return getVisibleAcademicSections(form.highestQualification).map(section => (
     <div className="form-section-card" key={section.key}>
       <div className="form-section-head">
@@ -206,11 +373,13 @@ function renderAcademicSections(form, bindNested) {
           <label className="field block" key={`${section.key}-${field.key}`}>
             <span>{field.label} *</span>
             <input
+              disabled={disabled}
               value={form[section.key]?.[field.key] || ''}
               onChange={event => bindNested(section.key, field.key, event.target.value)}
             />
           </label>
         ))}
+        {showDocuments && renderDocumentPicker(form, section.key, onDocumentSelect, disabled)}
       </div>
     </div>
   ));
@@ -235,8 +404,10 @@ function ProfileStrength({ form }) {
   );
 }
 
-function DashboardCard({ internship, actionLabel, onAction, actionClass = 'primary', children }) {
+function DashboardCard({ internship, actionLabel, onAction, actionClass = 'primary', skillLabels = {}, children }) {
+  const skillName = skill => skillLabels[skill] || labelForSkill(skill);
   const hasGap = internship.missingSkills?.length > 0;
+  const fitLabel = getFitLabel(internship);
   return (
     <article className="glass-card internship-card">
       <div className="internship-card-top">
@@ -248,38 +419,52 @@ function DashboardCard({ internship, actionLabel, onAction, actionClass = 'prima
       </div>
 
       <div className="fit-meta-row">
-        <p className="internship-meta">{internship.location} · {internship.jobType} · {internship.stipend}</p>
+        <p className="internship-meta">{internship.location} - {internship.jobType} - {internship.stipend}</p>
         <span className={`internship-status-pill ${hasGap ? 'gap' : 'ready'}`}>
-          {hasGap ? `${internship.missingSkills.length} skill gap${internship.missingSkills.length === 1 ? '' : 's'}` : 'Apply ready'}
+          {hasGap ? `${internship.missingSkills.length} skill gap${internship.missingSkills.length === 1 ? '' : 's'}` : fitLabel}
         </span>
       </div>
 
       <div className="chip-row">
         {(internship.skills || []).slice(0, 5).map(skill => (
-          <span key={skill} className="skill-chip">{labelForSkill(skill)}</span>
+          <span key={skill} className="skill-chip">{skillName(skill)}</span>
         ))}
       </div>
 
       {!!internship.matchedSkills?.length && (
-        <p className="success-copy">Matched skills: {internship.matchedSkills.map(labelForSkill).join(', ')}</p>
+        <p className="success-copy">Matched skills: {internship.matchedSkills.map(skillName).join(', ')}</p>
       )}
 
       {!!hasGap && (
-        <p className="muted-copy">Missing skills: {internship.missingSkills.map(labelForSkill).join(', ')}</p>
+        <p className="muted-copy">Missing skills: {internship.missingSkills.map(skillName).join(', ')}</p>
       )}
 
       {children}
       {internship.scoreBreakdown && (
         <p className="muted-copy">
-          Score factors: skill {Math.round(internship.scoreBreakdown.skill)}, location {Math.round(internship.scoreBreakdown.location)}, distance {Math.round(internship.scoreBreakdown.distance)}, boost {Math.round(internship.scoreBreakdown.opportunityBoost)}
+          Score factors: skill {Math.round(internship.scoreBreakdown.skill)}, quality {Math.round(internship.scoreBreakdown.quality)}, location {Math.round(internship.scoreBreakdown.location)}
         </p>
       )}
-      <button className={`action-btn ${actionClass}`} onClick={onAction} type="button">{actionLabel}</button>
+      {actionLabel && (
+        <button className={`action-btn ${actionClass}`} onClick={onAction} type="button">{actionLabel}</button>
+      )}
     </article>
   );
 }
 
-function AuthScreen({ mode, form, setForm, onSubmit, onSwitch, loading, onUseCurrentLocation }) {
+function AuthScreen({
+  mode,
+  form,
+  setForm,
+  onSubmit,
+  onSwitch,
+  loading,
+  onUseCurrentLocation,
+  skillOptions,
+  skillLabels,
+  locationOptions,
+}) {
+  const skillName = skill => skillLabels[skill] || labelForSkill(skill);
   const subtitle = mode === 'login'
     ? 'Pick up where you left off and refresh your recommendations.'
     : 'Complete one professional registration form, choose one location, and let the portal adapt based on your education and skills.';
@@ -306,6 +491,23 @@ function AuthScreen({ mode, form, setForm, onSubmit, onSwitch, loading, onUseCur
     const reader = new FileReader();
     reader.onload = () => setForm(prev => ({ ...prev, photo: String(reader.result || '') }));
     reader.readAsDataURL(file);
+  }
+
+  function handleRegisterDocumentSelect(kind, file) {
+    if (!file) return;
+    setForm(prev => ({
+      ...prev,
+      documentFiles: { ...(prev.documentFiles || {}), [kind]: file },
+      documents: {
+        ...(prev.documents || {}),
+        [kind]: {
+          kind,
+          originalName: file.name,
+          size: file.size,
+          contentType: file.type,
+        },
+      },
+    }));
   }
 
   function bindNested(group, key, value) {
@@ -453,9 +655,34 @@ function AuthScreen({ mode, form, setForm, onSubmit, onSwitch, loading, onUseCur
               <span>Phone number *</span>
               <input value={form.phone} onChange={event => setForm(prev => ({ ...prev, phone: event.target.value }))} />
             </label>
+            <label className="field block">
+              <span>Aadhaar number *</span>
+              <input
+                inputMode="numeric"
+                maxLength="12"
+                value={form.aadhaarNumber || ''}
+                onChange={event => setForm(prev => ({ ...prev, aadhaarNumber: event.target.value.replace(/\D/g, '').slice(0, 12) }))}
+              />
+            </label>
             <label className="field block full">
               <span>Address *</span>
               <textarea rows="3" value={form.address} onChange={event => setForm(prev => ({ ...prev, address: event.target.value }))} />
+            </label>
+            <label className="field block">
+              <span>GitHub profile</span>
+              <input
+                placeholder="https://github.com/yourname"
+                value={form.socialLinks?.github || ''}
+                onChange={event => setForm(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || {}), github: event.target.value } }))}
+              />
+            </label>
+            <label className="field block">
+              <span>LinkedIn profile</span>
+              <input
+                placeholder="https://linkedin.com/in/yourname"
+                value={form.socialLinks?.linkedin || ''}
+                onChange={event => setForm(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || {}), linkedin: event.target.value } }))}
+              />
             </label>
             <label className="field block">
               <span>Highest qualification *</span>
@@ -479,6 +706,11 @@ function AuthScreen({ mode, form, setForm, onSubmit, onSwitch, loading, onUseCur
               </p>
             </div>
             <div className="field full">
+              <span className="section-title">Documents</span>
+              <p className="helper-copy">Upload your resume and every marksheet visible for the selected highest qualification.</p>
+              {renderDocumentPicker(form, 'resume', handleRegisterDocumentSelect)}
+            </div>
+            <div className="field full">
               <span className="section-title">Registration summary</span>
               <p className="helper-copy">The form changes as soon as you choose the highest qualification, and you can select only one preferred location.</p>
               <ProfileStrength form={form} />
@@ -486,13 +718,18 @@ function AuthScreen({ mode, form, setForm, onSubmit, onSwitch, loading, onUseCur
             <div className="field full">
               <span className="section-title">Academic details</span>
               <p className="helper-copy">We only ask for the academic sections needed for the selected education level.</p>
-              <div className="academic-section-stack">{renderAcademicSections(form, bindNested)}</div>
+              <div className="academic-section-stack">
+                {renderAcademicSections(form, bindNested, {
+                  showDocuments: true,
+                  onDocumentSelect: handleRegisterDocumentSelect,
+                })}
+              </div>
             </div>
             <div className="field full">
               <span className="section-title">Preferred location *</span>
               <p className="helper-copy">Choose one location only. This will influence the internships shown in the portal.</p>
               <div className="location-grid">
-                {LOCATIONS.map(location => (
+                {locationOptions.map(location => (
                   <button key={location} className={`location-card ${selectedLocation === location ? 'selected' : ''}`} type="button" onClick={() => selectLocation(location)}>
                     <strong>{location}</strong>
                     <span>{selectedLocation === location ? 'Selected' : 'Set as preferred location'}</span>
@@ -504,9 +741,9 @@ function AuthScreen({ mode, form, setForm, onSubmit, onSwitch, loading, onUseCur
               <span className="section-title">Skills *</span>
               <p className="helper-copy">Select the skills you already have. The portal will use these skills to rank five internships for you.</p>
               <div className="chip-row large">
-                {SKILL_OPTIONS.map(skill => (
+                {skillOptions.map(skill => (
                   <button key={skill} className={`skill-chip ${form.skills.includes(skill) ? 'selected' : ''}`} type="button" onClick={() => toggleSkill(skill)}>
-                    {labelForSkill(skill)}
+                    {skillName(skill)}
                   </button>
                 ))}
               </div>
@@ -526,23 +763,36 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [user, setUser] = useState(null);
-  const [dashboard, setDashboard] = useState({ catalog: [], recommended: [], qualified: [], stretch: [], applications: [] });
+  const [dashboard, setDashboard] = useState(EMPTY_DASHBOARD);
+  const [internshipMetadata, setInternshipMetadata] = useState({ skills: [], locations: [], source: 'fallback', count: 0 });
   const [registerForm, setRegisterForm] = useState(emptyRegisterForm);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [profileDraft, setProfileDraft] = useState(null);
+  const [profileEditing, setProfileEditing] = useState(false);
   const [roadmapData, setRoadmapData] = useState(null);
-  const [selectedStretch, setSelectedStretch] = useState(null);
-  const [activeInternshipTab, setActiveInternshipTab] = useState('top5');
   const [menuOpen, setMenuOpen] = useState(false);
   const [applyState, setApplyState] = useState({});
   const [applyModalInternship, setApplyModalInternship] = useState(null);
-  const [topFiveInternshipIds, setTopFiveInternshipIds] = useState([]);
+  const [readyMatchIds, setReadyMatchIds] = useState([]);
+  const [growthPickIds, setGrowthPickIds] = useState([]);
+  const [recommendationPreferences, setRecommendationPreferences] = useState(EMPTY_PREFERENCES);
+  const [homeSearch, setHomeSearch] = useState('');
+  const [homeFilters, setHomeFilters] = useState(EMPTY_HOME_FILTERS);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [homeSlide, setHomeSlide] = useState(0);
-  const [activeRoadmapInternshipId, setActiveRoadmapInternshipId] = useState(() => Storage.get(ROADMAP_SESSION_KEY, null));
+  const [activeRoadmapContext, setActiveRoadmapContext] = useState(getStoredRoadmapContext);
   const authMode = route === '/register' ? 'register' : 'login';
+  const dynamicSkillLabels = {
+    ...SKILL_LABELS,
+    ...Object.fromEntries((internshipMetadata.skills || []).map(skill => [skill.value, skill.label])),
+  };
+  const skillOptions = internshipMetadata.skills?.length
+    ? internshipMetadata.skills.map(skill => skill.value)
+    : SKILL_OPTIONS;
+  const locationOptions = internshipMetadata.locations?.length ? internshipMetadata.locations : LOCATIONS;
+  const getSkillLabel = skill => dynamicSkillLabels[skill] || labelForSkill(skill);
 
   useEffect(() => {
     const onRoute = () => {
@@ -556,6 +806,12 @@ export default function App() {
     };
     window.addEventListener('popstate', onRoute);
     return () => window.removeEventListener('popstate', onRoute);
+  }, []);
+
+  useEffect(() => {
+    API.internshipMetadata()
+      .then(data => setInternshipMetadata(data))
+      .catch(() => setInternshipMetadata({ skills: [], locations: [], source: 'fallback', count: 0 }));
   }, []);
 
   useEffect(() => {
@@ -595,12 +851,12 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
 
-    async function restoreRoadmapFromSession(internshipId) {
+    async function restoreRoadmapFromSession(context) {
       try {
-        const data = await API.getRoadmap(internshipId);
+        const data = await API.getRoadmap(context.internshipId, context.skill);
         if (cancelled) return;
+        logGeminiRoadmapDebug(data, 'session restore');
         setRoadmapData(data);
-        setSelectedStretch(internshipId);
         setChatMessages([
           {
             role: 'assistant',
@@ -616,12 +872,12 @@ export default function App() {
     }
 
     if (route === '/upskill' && !roadmapData) {
-      const savedInternshipId = Storage.get(ROADMAP_SESSION_KEY, null);
-      if (!savedInternshipId) {
+      const savedContext = getStoredRoadmapContext();
+      if (!savedContext) {
         showToast('Open a missing-skill internship first to enter the roadmap page.');
-        goTo('/home');
+        goTo('/growth-picks');
       } else {
-        restoreRoadmapFromSession(savedInternshipId);
+        restoreRoadmapFromSession(savedContext);
       }
     }
 
@@ -631,10 +887,14 @@ export default function App() {
   }, [route, roadmapData]);
 
   function navigate(path) {
+    if (path !== '/profile') {
+      setProfileEditing(false);
+    }
     if (path !== '/upskill') {
       setRoadmapData(null);
       setChatMessages([]);
       setChatInput('');
+      setActiveRoadmapContext(null);
       Storage.remove(ROADMAP_SESSION_KEY);
     }
     goTo(path);
@@ -643,40 +903,37 @@ export default function App() {
   async function loadDashboard() {
     try {
       const data = await API.dashboard();
-      setDashboard(data);
-      setTopFiveInternshipIds(prev => {
+      const normalized = normalizeDashboard(data);
+      setDashboard(normalized);
+      setReadyMatchIds(prev => {
         if (prev.length) return prev;
-        const fromRecommended = (data.recommended || []).map(item => item.id);
-        if (fromRecommended.length) return fromRecommended.slice(0, 5);
-        return [...(data.qualified || []), ...(data.stretch || [])].map(item => item.id).slice(0, 5);
+        return (normalized.readyMatches || []).map(item => item.id).slice(0, 5);
       });
-      const stretchIds = new Set((data.stretch || []).map(item => item.id));
-      if (activeRoadmapInternshipId && !stretchIds.has(activeRoadmapInternshipId)) {
-        setActiveRoadmapInternshipId(null);
-        Storage.remove(ROADMAP_SESSION_KEY);
-      }
+      setGrowthPickIds(prev => {
+        if (prev.length) return prev;
+        return (normalized.growthPicks || []).map(item => item.id).slice(0, 5);
+      });
       setUser(prev => (prev ? { ...prev, ...data.profile } : data.profile));
-      setProfileDraft(data.profile);
-      setSelectedStretch(prev => {
-        if (!data.stretch.length) return null;
-        const stillExists = data.stretch.some(item => item.id === prev);
-        return stillExists ? prev : data.stretch[0].id;
-      });
+      if (!profileEditing) {
+        setProfileDraft(data.profile);
+      }
     } catch (error) {
       showToast(error.message);
     }
   }
 
   async function handleRegister() {
-    if (!isRegisterFormComplete(registerForm)) {
-      showToast('Please fill all mandatory (*) fields before registering.');
+    const missingItems = getRegistrationMissingItems(registerForm);
+    if (missingItems.length) {
+      showToast(formatMissingItems(missingItems));
       return;
     }
     setSubmitLoading(true);
     try {
-      const payload = sanitizeProfilePayload(registerForm);
+      const payload = buildRegistrationFormData(registerForm);
       const data = await API.register(payload);
       setUser(data.user);
+      setProfileDraft(data.user);
       setRegisterForm(emptyRegisterForm());
       fireConfetti(32);
       showToast('Profile created');
@@ -710,14 +967,19 @@ export default function App() {
   async function handleLogout() {
     await API.logout().catch(() => null);
     setUser(null);
-    setDashboard({ catalog: [], recommended: [], qualified: [], stretch: [], applications: [] });
+    setDashboard(EMPTY_DASHBOARD);
+    setReadyMatchIds([]);
+    setGrowthPickIds([]);
     navigate('/login');
   }
 
   async function handleRefresh() {
     try {
-      const data = await API.refreshRecommendations();
-      setDashboard(data);
+      const data = await API.refreshRecommendations(recommendationPreferences);
+      const normalized = normalizeDashboard(data);
+      setDashboard(normalized);
+      setReadyMatchIds((normalized.readyMatches || []).map(item => item.id).slice(0, 5));
+      setGrowthPickIds((normalized.growthPicks || []).map(item => item.id).slice(0, 5));
       setUser(prev => ({ ...prev, ...data.profile }));
       setProfileDraft(data.profile);
       showToast('Recommendation lists refreshed');
@@ -726,31 +988,41 @@ export default function App() {
     }
   }
 
-  async function handleLoadRoadmap(internshipId) {
+  async function handleLoadRoadmap(internshipId, skill, refresh = false) {
     const internship = findInternshipById(internshipId);
-    if (activeRoadmapInternshipId && activeRoadmapInternshipId !== internshipId) {
+    const nextContext = { internshipId, skill };
+    if (
+      activeRoadmapContext
+      && (activeRoadmapContext.internshipId !== internshipId || activeRoadmapContext.skill !== skill)
+    ) {
       showToast('Complete your active roadmap first before opening another skill-gap internship.');
       return;
     }
 
-    if (internship && !internship.missingSkills?.length) {
-      showToast('This internship is already ready to apply. No roadmap is needed.');
-      openApplyModal(internship);
+    if (!skill) {
+      showToast('Choose one missing skill to start a focused roadmap.');
       return;
     }
-
-    setSelectedStretch(internshipId);
+    if (internship && !internship.missingSkills?.includes(skill)) {
+      showToast('That skill is already covered for this internship.');
+      if (!internship.missingSkills?.length) {
+        openApplyModal(internship);
+      }
+      return;
+    }
     try {
-      const data = await API.getRoadmap(internshipId);
+      const data = await API.getRoadmap(internshipId, skill, refresh);
+      logGeminiRoadmapDebug(data, refresh ? 'regenerate' : 'open');
       setRoadmapData(data);
-      setActiveRoadmapInternshipId(internshipId);
-      Storage.set(ROADMAP_SESSION_KEY, internshipId);
+      setActiveRoadmapContext(nextContext);
+      Storage.set(ROADMAP_SESSION_KEY, nextContext);
       setChatMessages([
         {
           role: 'assistant',
-          text: `I am your roadmap copilot for ${data.internship.title} at ${data.internship.org}. Ask what to learn first, ask for a weekly plan, or say "tick next mission" after you finish a level.`,
+          text: `I am your roadmap copilot for ${getSkillLabel(skill)} at ${data.internship.org}. Ask what to learn first, ask for a weekly plan, or say "tick next mission" after you finish a level.`,
         },
       ]);
+      showToast(refresh ? `Roadmap regenerated via ${data.roadmap.source}` : 'Roadmap opened');
       goTo('/upskill');
     } catch (error) {
       showToast(error.message);
@@ -758,16 +1030,29 @@ export default function App() {
   }
 
   async function completeLevel(levelId) {
-    if (!roadmapData) return;
+    if (!roadmapData) return false;
     try {
-      const data = await API.completeRoadmapLevel(roadmapData.internship.id, levelId);
+      const activeSkill = roadmapData.skill || activeRoadmapContext?.skill;
+      const data = await API.completeRoadmapLevel(roadmapData.internship.id, levelId, activeSkill);
       setRoadmapData(prev => ({ ...prev, roadmap: data.roadmap }));
       setUser(prev => ({ ...prev, skills: data.skills }));
       setProfileDraft(prev => ({ ...prev, skills: data.skills }));
-      await loadDashboard();
-      showToast('Mission cleared and progress updated');
+      const latest = await API.refreshRecommendations(recommendationPreferences);
+      setDashboard(normalizeDashboard(latest));
+      if (data.skillCompleted) {
+        fireConfetti(28);
+        showToast(`${getSkillLabel(data.skill)} added to your profile`);
+        setRoadmapData(null);
+        setActiveRoadmapContext(null);
+        Storage.remove(ROADMAP_SESSION_KEY);
+        goTo('/growth-picks');
+      } else {
+        showToast('Topic cleared and progress updated');
+      }
+      return Boolean(data.skillCompleted);
     } catch (error) {
       showToast(error.message);
+      return false;
     }
   }
 
@@ -777,24 +1062,52 @@ export default function App() {
       showToast('All roadmap missions are already completed for this internship.');
       return;
     }
-    await completeLevel(nextLevel.id);
-    if (fromChat) {
+    const skillCompleted = await completeLevel(nextLevel.id);
+    if (fromChat && !skillCompleted) {
       setChatMessages(prev => [
         ...prev,
         {
           role: 'assistant',
-          text: `Marked ${nextLevel.topic} under ${labelForSkill(nextLevel.skill)} as completed. Your gamification bar has moved forward.`,
+          text: `Marked ${nextLevel.topic} under ${getSkillLabel(nextLevel.skill)} as completed. Your gamification bar has moved forward.`,
         },
       ]);
     }
   }
 
   async function saveProfile() {
+    if (profileDraft?.aadhaarNumber && !isValidAadhaar(profileDraft.aadhaarNumber)) {
+      showToast('Enter a valid 12-digit Aadhaar number.');
+      return;
+    }
     try {
       const data = await API.updateProfile(sanitizeProfilePayload(profileDraft));
       setUser(data.profile);
       setProfileDraft(data.profile);
+      setProfileEditing(false);
       showToast('Profile updated');
+    } catch (error) {
+      showToast(error.message);
+    }
+  }
+
+  function cancelProfileEdit() {
+    setProfileDraft(user);
+    setProfileEditing(false);
+  }
+
+  async function onProfileDocumentSelect(kind, file) {
+    if (!file) return;
+    try {
+      const data = await API.uploadDocument(kind, file, true);
+      setProfileDraft(prev => ({
+        ...(prev || {}),
+        documents: { ...(prev?.documents || {}), [kind]: data.document },
+      }));
+      setUser(prev => ({
+        ...(prev || {}),
+        documents: { ...(prev?.documents || {}), [kind]: data.document },
+      }));
+      showToast(`${DOCUMENT_LABELS[kind]} uploaded`);
     } catch (error) {
       showToast(error.message);
     }
@@ -814,7 +1127,7 @@ export default function App() {
 
   async function applyForInternship(internship) {
     const payload = applyState[internship.id] || {};
-    if (!payload.fullName || !payload.email || !payload.resumeName) {
+    if (!payload.fullName || !payload.email || !payload.documents?.resume) {
       showToast('Please complete name, email, and resume before applying.');
       return;
     }
@@ -823,9 +1136,22 @@ export default function App() {
         internshipId: internship.id,
         fullName: payload.fullName || user.fullName,
         email: payload.email || user.email,
-        githubProfile: payload.githubProfile || '',
+        aadhaarNumber: payload.aadhaarNumber || user.aadhaarNumber || '',
+        address: payload.address || user.address || '',
         phone: payload.phone || user.phone,
-        resumeName: payload.resumeName || '',
+        preferredLocations: payload.preferredLocations || user.preferredLocations || [],
+        highestQualification: payload.highestQualification || user.highestQualification || '',
+        secondary: payload.secondary || user.secondary || {},
+        higherSecondary: payload.higherSecondary || user.higherSecondary || {},
+        diploma: payload.diploma || user.diploma || {},
+        graduation: payload.graduation || user.graduation || {},
+        postGraduation: payload.postGraduation || user.postGraduation || {},
+        skills: payload.skills || user.skills || [],
+        socialLinks: payload.socialLinks || user.socialLinks || {},
+        githubProfile: payload.socialLinks?.github || '',
+        linkedinProfile: payload.socialLinks?.linkedin || '',
+        documents: payload.documents || user.documents || {},
+        resumeName: payload.documents?.resume?.originalName || '',
         resumeText: payload.resumeText || '',
         coverNote: payload.coverNote || '',
       });
@@ -845,8 +1171,18 @@ export default function App() {
         fullName: prev[internship.id]?.fullName || user.fullName || '',
         email: prev[internship.id]?.email || user.email || '',
         phone: prev[internship.id]?.phone || user.phone || '',
-        githubProfile: prev[internship.id]?.githubProfile || '',
-        resumeName: prev[internship.id]?.resumeName || '',
+        aadhaarNumber: prev[internship.id]?.aadhaarNumber || user.aadhaarNumber || '',
+        address: prev[internship.id]?.address || user.address || '',
+        preferredLocations: prev[internship.id]?.preferredLocations || user.preferredLocations || [],
+        highestQualification: prev[internship.id]?.highestQualification || user.highestQualification || '',
+        secondary: prev[internship.id]?.secondary || user.secondary || {},
+        higherSecondary: prev[internship.id]?.higherSecondary || user.higherSecondary || {},
+        diploma: prev[internship.id]?.diploma || user.diploma || {},
+        graduation: prev[internship.id]?.graduation || user.graduation || {},
+        postGraduation: prev[internship.id]?.postGraduation || user.postGraduation || {},
+        skills: prev[internship.id]?.skills || user.skills || [],
+        socialLinks: prev[internship.id]?.socialLinks || user.socialLinks || { github: '', linkedin: '' },
+        documents: prev[internship.id]?.documents || user.documents || {},
         resumeText: prev[internship.id]?.resumeText || '',
         coverNote: prev[internship.id]?.coverNote || '',
       },
@@ -854,15 +1190,24 @@ export default function App() {
     setApplyModalInternship(internship);
   }
 
-  function onResumeSelect(internshipId, file) {
+  async function onApplicationDocumentSelect(internshipId, kind, file) {
     if (!file) return;
-    setApplyState(prev => ({
-      ...prev,
-      [internshipId]: {
-        ...(prev[internshipId] || {}),
-        resumeName: file.name,
-      },
-    }));
+    try {
+      const data = await API.uploadDocument(kind, file, false);
+      setApplyState(prev => ({
+        ...prev,
+        [internshipId]: {
+          ...(prev[internshipId] || {}),
+          documents: {
+            ...(prev[internshipId]?.documents || {}),
+            [kind]: data.document,
+          },
+        },
+      }));
+      showToast(`${DOCUMENT_LABELS[kind]} attached to this application`);
+    } catch (error) {
+      showToast(error.message);
+    }
   }
 
   async function sendRoadmapChat(messageText) {
@@ -886,7 +1231,7 @@ export default function App() {
 
     setChatLoading(true);
     try {
-      const data = await API.chatRoadmap(roadmapData.internship.id, message);
+      const data = await API.chatRoadmap(roadmapData.internship.id, message, roadmapData.skill || activeRoadmapContext?.skill);
       setChatMessages(prev => [
         ...prev,
         { role: 'assistant', text: data.reply, suggestions: data.suggestions || [] },
@@ -972,68 +1317,77 @@ export default function App() {
       ...(dashboard.recommended || []),
       ...(dashboard.qualified || []),
       ...(dashboard.stretch || []),
+      ...(dashboard.readyMatches || []),
+      ...(dashboard.growthPicks || []),
     ].find(item => item.id === internshipId);
   }
 
-  function renderInternshipCard(internship, allowRoadmap = false) {
-    const roadmapSolvedForThisInternship = Boolean(
-      roadmapCompleted
-      && activeRoadmapInternshipId
-      && internship.id === activeRoadmapInternshipId
-    );
-    const hasGap = !roadmapSolvedForThisInternship && internship.missingSkills?.length > 0;
+  function renderInternshipCard(internship, mode = 'catalog') {
+    const hasGap = internship.missingSkills?.length > 0;
     const isApplied = Boolean(applicationsById[internship.id]);
-    const isAnotherRoadmapLocked = Boolean(
-      activeRoadmapInternshipId && activeRoadmapInternshipId !== internship.id
-    );
-    const canOpenRoadmap = hasGap && allowRoadmap && !isAnotherRoadmapLocked;
+    const isReadyMode = mode === 'ready';
+    const isGrowthMode = mode === 'growth';
+    const canApply = !hasGap && (isReadyMode || isGrowthMode);
     return (
       <DashboardCard
         key={internship.id}
         internship={internship}
-        actionLabel={
-          isApplied
-            ? 'Applied'
-            : canOpenRoadmap
-              ? 'Learn missing skills'
-              : isAnotherRoadmapLocked && hasGap && allowRoadmap
-                ? 'Roadmap locked'
-              : 'Apply now'
-        }
+        skillLabels={dynamicSkillLabels}
+        actionLabel={canApply ? (isApplied ? 'Applied' : 'Apply now') : null}
         onAction={() => {
-          if (isApplied) return;
-          if (canOpenRoadmap) {
-            handleLoadRoadmap(internship.id);
-            return;
-          }
-          if (isAnotherRoadmapLocked && hasGap && allowRoadmap) {
-            showToast('Another internship roadmap is active. Complete it first to unlock this roadmap.');
-            return;
-          }
-          if (hasGap && !allowRoadmap) {
-            showToast('Open this internship from Better opportunities tab to start roadmap learning.');
-            return;
-          }
+          if (isApplied || !canApply) return;
           openApplyModal(internship);
         }}
-        actionClass={isApplied || (isAnotherRoadmapLocked && hasGap && allowRoadmap) ? 'disabled' : canOpenRoadmap ? 'secondary' : 'primary'}
+        actionClass={isApplied ? 'disabled' : 'primary'}
       >
         {isApplied && (
           <p className="success-copy">Submitted on {new Date(applicationsById[internship.id].applied_at).toLocaleDateString('en-IN')}</p>
+        )}
+        {mode === 'catalog' && (
+          <p className="catalog-fit-copy">{getFitLabel(internship)} for your current profile.</p>
+        )}
+        {isGrowthMode && !hasGap && (
+          <p className="success-copy">Qualified now. You can apply without refreshing this fixed list.</p>
+        )}
+        {isGrowthMode && hasGap && (
+          <div className="learn-button-row">
+            {internship.missingSkills.slice(0, 2).map(skill => (
+              <button
+                key={`${internship.id}-${skill}`}
+                className="action-btn secondary"
+                type="button"
+                onClick={() => handleLoadRoadmap(internship.id, skill)}
+              >
+                Learn {getSkillLabel(skill)}
+              </button>
+            ))}
+          </div>
         )}
       </DashboardCard>
     );
   }
 
   const homeSlides = [
-    'AI-powered internship matching based on skills, qualification, and location.',
-    'Track roadmap progress and continue learning exactly where you left off.',
-    'Discover qualified roles and better opportunities across multiple domains.',
+    {
+      eyebrow: 'Live opportunity atlas',
+      title: 'Every internship, ranked around your profile.',
+      copy: 'Browse the full Excel-backed catalog with fit labels, location signals, stipend context, and ML scoring on every card.',
+    },
+    {
+      eyebrow: 'Ready Matches',
+      title: 'Five roles you can apply to right now.',
+      copy: 'Set your domain, location, stipend, and experience preferences, then refresh a fixed list of fully qualified internships.',
+    },
+    {
+      eyebrow: 'Growth Picks',
+      title: 'Higher-upside roles unlocked by one or two skills.',
+      copy: 'Open a single-skill roadmap, complete the animated levels, and the skill is added back to your profile instantly.',
+    },
   ];
 
   useEffect(() => {
     if (route !== '/home') return undefined;
-    const id = setInterval(() => setHomeSlide(prev => (prev + 1) % 3), 3500);
+    const id = setInterval(() => setHomeSlide(prev => (prev + 1) % 3), 4300);
     return () => clearInterval(id);
   }, [route]);
 
@@ -1051,6 +1405,9 @@ export default function App() {
         onSwitch={() => navigate(authMode === 'login' ? '/register' : '/login')}
         loading={submitLoading}
         onUseCurrentLocation={fetchBrowserLocation}
+        skillOptions={skillOptions}
+        skillLabels={dynamicSkillLabels}
+        locationOptions={locationOptions}
       />
     );
   }
@@ -1062,15 +1419,57 @@ export default function App() {
     roadmapData?.internship && (roadmapProgress.total === 0 || roadmapProgress.completed === roadmapProgress.total)
   );
   const roadmapProgressPercent = roadmapCompleted ? 100 : roadmapProgress.percent;
+  const activeSlide = homeSlides[homeSlide % homeSlides.length];
+  const catalogItems = dashboard.catalog || [];
+  const readyItems = readyMatchIds.map(findInternshipById).filter(Boolean);
+  const growthItems = growthPickIds.map(findInternshipById).filter(Boolean);
+  const domainOptions = Array.from(new Set(catalogItems.map(item => item.sector).filter(Boolean))).sort();
+  const catalogLocations = Array.from(new Set(catalogItems.map(item => item.location).filter(Boolean))).sort();
+  const jobTypeOptions = Array.from(new Set(catalogItems.map(item => item.jobType).filter(Boolean))).sort();
+  const experienceOptions = Array.from(new Set(catalogItems.map(item => item.experience).filter(Boolean))).sort();
+  const searchText = homeSearch.trim().toLowerCase();
+  const filteredCatalog = catalogItems.filter(item => {
+    const haystack = [
+      item.title,
+      item.org,
+      item.location,
+      item.jobType,
+      item.sector,
+      item.experience,
+      ...(item.skills || []),
+    ].join(' ').toLowerCase();
+    const matchesSearch = !searchText || haystack.includes(searchText);
+    const matchesDomain = homeFilters.domain === 'all' || item.sector === homeFilters.domain;
+    const matchesLocation = homeFilters.location === 'all' || item.location === homeFilters.location;
+    const matchesJobType = homeFilters.jobType === 'all' || item.jobType === homeFilters.jobType;
+    const matchesExperience = homeFilters.experience === 'all' || item.experience === homeFilters.experience;
+    const matchesStipend = homeFilters.stipendType === 'all' || getStipendType(item) === homeFilters.stipendType;
+    const label = getFitLabel(item);
+    const matchesFit =
+      homeFilters.fit === 'all'
+      || (homeFilters.fit === 'qualified' && !item.missingSkills?.length)
+      || (homeFilters.fit === 'stretch' && item.missingSkills?.length >= 1 && item.missingSkills?.length <= 2)
+      || (homeFilters.fit === 'not-ideal' && label === 'Not ideal')
+      || (homeFilters.fit === 'highly-aligned' && label === 'Highly aligned');
+    return matchesSearch && matchesDomain && matchesLocation && matchesJobType && matchesExperience && matchesStipend && matchesFit;
+  });
+
+  function updatePreference(key, value) {
+    setRecommendationPreferences(prev => ({ ...prev, [key]: value }));
+  }
+
+  function updateHomeFilter(key, value) {
+    setHomeFilters(prev => ({ ...prev, [key]: value }));
+  }
 
   return (
     <div className="app-shell">
       <header className="topbar glass-card">
-        <button className="brand-lockup" onClick={() => navigate('/qualified')} type="button">
-          <span className="brand-orb" />
+        <button className="brand-lockup" onClick={() => navigate('/home')} type="button">
+          <span className="brand-mark">PM</span>
           <span>
             <strong>PM Internship Engine</strong>
-            <small>Skill-aware matching, adaptive forms, and gap roadmaps</small>
+            <small>ML ranked opportunities and focused growth roadmaps</small>
           </span>
         </button>
 
@@ -1102,87 +1501,229 @@ export default function App() {
       </header>
 
       <main className="workspace">
-        <section className="page-hero glass-card">
-          <div>
-            <p className="eyebrow">Candidate cockpit</p>
-            <h1>{user.fullName || 'Candidate'}</h1>
-            <p>
-              The portal now ranks five internships from your selected skills and location, and it opens roadmap missions only when there is a real skill gap.
-            </p>
-          </div>
-          <div className="hero-actions">
-            <button className="action-btn secondary" type="button" onClick={handleRefresh}>Refresh Lists</button>
-            <div className="glass-stat compact">
-              <strong>{dashboard.qualified.length}</strong>
-              <span>qualified now</span>
-            </div>
-            <div className="glass-stat compact">
-              <strong>{dashboard.stretch.length}</strong>
-              <span>better opportunities</span>
-            </div>
-          </div>
-        </section>
-
         {route === '/home' && (
-          <section className="glass-card home-hero">
-            <p className="eyebrow">Platform overview</p>
-            <h2>Welcome to PM Internship Engine</h2>
-            <p>{homeSlides[homeSlide]}</p>
-            <div className="home-metrics">
-              <div className="summary-pill"><strong>{dashboard.catalog.length}</strong><span>Total internships</span></div>
-              <div className="summary-pill"><strong>{new Set((dashboard.catalog || []).map(item => item.title)).size}</strong><span>Domains / roles</span></div>
-              <div className="summary-pill"><strong>{dashboard.qualified.length}</strong><span>Best qualified now</span></div>
-            </div>
-            <button className="action-btn primary" type="button" onClick={() => navigate('/qualified')}>Explore internships</button>
-          </section>
+          <>
+            <section className="home-hero premium-hero">
+              <div className="premium-hero-copy">
+                <p className="eyebrow">{activeSlide.eyebrow}</p>
+                <h1>{activeSlide.title}</h1>
+                <p>{activeSlide.copy}</p>
+                <div className="hero-actions">
+                  <button className="action-btn primary" type="button" onClick={() => navigate('/ready-matches')}>Generate ready matches</button>
+                  <button className="action-btn secondary" type="button" onClick={() => navigate('/growth-picks')}>View growth picks</button>
+                </div>
+              </div>
+              <div className="hero-showcase">
+                <div className="hero-showcase-card">
+                  <span>Catalog</span>
+                  <strong>{catalogItems.length}</strong>
+                  <small>Excel-backed internships</small>
+                </div>
+                <div className="hero-showcase-card">
+                  <span>Ready</span>
+                  <strong>{dashboard.readyMatches.length}</strong>
+                  <small>Qualified choices</small>
+                </div>
+                <div className="hero-showcase-card">
+                  <span>Growth</span>
+                  <strong>{dashboard.growthPicks.length}</strong>
+                  <small>1-2 skill gaps</small>
+                </div>
+              </div>
+              <div className="hero-slide-dots" aria-label="Hero slideshow">
+                {homeSlides.map((slide, index) => (
+                  <button
+                    key={slide.eyebrow}
+                    className={index === homeSlide ? 'active' : ''}
+                    type="button"
+                    aria-label={`Show slide ${index + 1}`}
+                    onClick={() => setHomeSlide(index)}
+                  />
+                ))}
+              </div>
+            </section>
+
+            <section className="catalog-section">
+              <div className="section-heading-row">
+                <div>
+                  <p className="eyebrow">Internship catalog</p>
+                  <h2>Browse all live internships</h2>
+                </div>
+                <span className="catalog-count">{filteredCatalog.length} shown</span>
+              </div>
+
+              <div className="catalog-controls">
+                <label className="field block catalog-search">
+                  <span>Search</span>
+                  <input
+                    value={homeSearch}
+                    onChange={event => setHomeSearch(event.target.value)}
+                    placeholder="Search by role, company, skill, location, or domain"
+                  />
+                </label>
+                <label className="field block">
+                  <span>Domain</span>
+                  <select value={homeFilters.domain} onChange={event => updateHomeFilter('domain', event.target.value)}>
+                    <option value="all">All domains</option>
+                    {domainOptions.map(domain => <option key={domain} value={domain}>{domain}</option>)}
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Location</span>
+                  <select value={homeFilters.location} onChange={event => updateHomeFilter('location', event.target.value)}>
+                    <option value="all">All locations</option>
+                    {catalogLocations.map(location => <option key={location} value={location}>{location}</option>)}
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Job type</span>
+                  <select value={homeFilters.jobType} onChange={event => updateHomeFilter('jobType', event.target.value)}>
+                    <option value="all">All types</option>
+                    {jobTypeOptions.map(jobType => <option key={jobType} value={jobType}>{jobType}</option>)}
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Experience</span>
+                  <select value={homeFilters.experience} onChange={event => updateHomeFilter('experience', event.target.value)}>
+                    <option value="all">Any experience</option>
+                    {experienceOptions.map(experience => <option key={experience} value={experience}>{experience}</option>)}
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Stipend</span>
+                  <select value={homeFilters.stipendType} onChange={event => updateHomeFilter('stipendType', event.target.value)}>
+                    <option value="all">Any stipend</option>
+                    <option value="paid">Paid stipend</option>
+                    <option value="free">Free/performance-based</option>
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Fit</span>
+                  <select value={homeFilters.fit} onChange={event => updateHomeFilter('fit', event.target.value)}>
+                    <option value="all">All fit levels</option>
+                    <option value="highly-aligned">Highly aligned</option>
+                    <option value="qualified">Qualified now</option>
+                    <option value="stretch">Stretch</option>
+                    <option value="not-ideal">Not ideal</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="card-grid catalog-grid">
+                {filteredCatalog.map(item => renderInternshipCard(item, 'catalog'))}
+              </div>
+            </section>
+          </>
         )}
 
-        {route === '/qualified' && (
+        {route === '/ready-matches' && (
           <section className="page-grid">
             <div className="panel-stack">
-              <div className="panel-heading">
-                <h2>Internship discovery</h2>
-                <p>
-                  This page shows only your fixed top 5 internships. If any of these has a skill gap, complete its roadmap and then apply from the same card.
-                </p>
+              <div className="section-heading-row">
+                <div>
+                  <p className="eyebrow">Ready Matches</p>
+                  <h2>Five internships you qualify for now</h2>
+                </div>
+                <button className="action-btn secondary" type="button" onClick={handleRefresh}>Refresh Lists</button>
+              </div>
+
+              <div className="preference-panel">
+                <label className="field block">
+                  <span>Domain</span>
+                  <select value={recommendationPreferences.domain} onChange={event => updatePreference('domain', event.target.value)}>
+                    <option value="any">Any domain</option>
+                    {domainOptions.map(domain => <option key={domain} value={domain}>{domain}</option>)}
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Desired location</span>
+                  <select value={recommendationPreferences.desiredLocation} onChange={event => updatePreference('desiredLocation', event.target.value)}>
+                    <option value="">Use profile location</option>
+                    {Array.from(new Set([...locationOptions, ...catalogLocations])).map(location => (
+                      <option key={location} value={location}>{location}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Job type</span>
+                  <select value={recommendationPreferences.jobType} onChange={event => updatePreference('jobType', event.target.value)}>
+                    <option value="any">Any type</option>
+                    {jobTypeOptions.map(jobType => <option key={jobType} value={jobType}>{jobType}</option>)}
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Stipend preference</span>
+                  <select value={recommendationPreferences.stipendPreference} onChange={event => updatePreference('stipendPreference', event.target.value)}>
+                    <option>Any</option>
+                    <option>Paid stipend</option>
+                    <option>Free/performance-based</option>
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Experience fit</span>
+                  <select value={recommendationPreferences.experiencePreference} onChange={event => updatePreference('experiencePreference', event.target.value)}>
+                    <option>Any</option>
+                    <option>Fresher</option>
+                    <option>Experienced</option>
+                  </select>
+                </label>
+                <label className="field block">
+                  <span>Experience amount</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={recommendationPreferences.experienceAmount}
+                    onChange={event => updatePreference('experienceAmount', event.target.value)}
+                    placeholder="Years"
+                  />
+                </label>
               </div>
 
               <div className="summary-strip">
-                <div className="summary-pill">
-                  <strong>{topFiveInternshipIds.length}</strong>
-                  <span>fixed top internships on this page</span>
+                <div className="summary-pill"><strong>{readyItems.length}</strong><span>fixed ready matches</span></div>
+                <div className="summary-pill"><strong>{growthItems.length}</strong><span>growth picks waiting</span></div>
+              </div>
+
+              {readyItems.length > 0 ? (
+                <div className="card-grid">
+                  {readyItems.map(item => renderInternshipCard(item, 'ready'))}
                 </div>
+              ) : (
+                <div className="empty-state glass-card">
+                  <h3>No ready matches yet</h3>
+                  <p>Refresh the lists after choosing preferences.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {route === '/growth-picks' && (
+          <section className="page-grid">
+            <div className="panel-stack">
+              <div className="section-heading-row">
+                <div>
+                  <p className="eyebrow">Growth Picks</p>
+                  <h2>Better internships within one or two skills</h2>
+                </div>
+                <button className="action-btn secondary" type="button" onClick={handleRefresh}>Refresh Lists</button>
               </div>
 
-              <div className="internship-tabs" role="tablist" aria-label="Internship views">
-                {INTERNSHIP_TABS.map(tab => (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    role="tab"
-                    className={`internship-tab ${activeInternshipTab === tab.key ? 'active' : ''}`}
-                    aria-selected={activeInternshipTab === tab.key}
-                    onClick={() => setActiveInternshipTab(tab.key)}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+              <div className="summary-strip">
+                <div className="summary-pill"><strong>{growthItems.length}</strong><span>fixed growth picks</span></div>
+                <div className="summary-pill"><strong>{user.skills?.length || 0}</strong><span>skills on profile</span></div>
               </div>
 
-              {activeInternshipTab === 'top5' && (
-                topFiveInternshipIds.length > 0 ? (
-                  <div className="card-grid">
-                    {topFiveInternshipIds
-                      .map(id => findInternshipById(id))
-                      .filter(Boolean)
-                      .map(item => renderInternshipCard(item, true))}
-                  </div>
-                ) : (
-                  <div className="empty-state glass-card">
-                    <h3>No top internships yet</h3>
-                    <p>Refresh recommendations to generate your top 5 internships.</p>
-                  </div>
-                )
+              {growthItems.length > 0 ? (
+                <div className="card-grid">
+                  {growthItems.map(item => renderInternshipCard(item, 'growth'))}
+                </div>
+              ) : (
+                <div className="empty-state glass-card">
+                  <h3>No growth picks yet</h3>
+                  <p>Refresh the lists to find high-upside roles with a small skill gap.</p>
+                </div>
               )}
             </div>
           </section>
@@ -1192,13 +1733,13 @@ export default function App() {
           <section className="dual-layout roadmap-page">
             <div className="stretch-list glass-card">
               <div className="panel-heading">
-                <h2>Skill-gap roadmap arena</h2>
-                <p>Only the currently active internship roadmap is shown here.</p>
+                <h2>{getSkillLabel(roadmapData?.skill || activeRoadmapContext?.skill || '')} roadmap</h2>
+                <p>One focused skill path for the selected growth pick.</p>
               </div>
               {!roadmapData?.internship ? (
                 <div className="empty-state">
                   <h3>No active roadmap selected</h3>
-                  <p>Open one skill-gap internship from Better opportunities to start learning.</p>
+                  <p>Open one growth pick to start learning.</p>
                 </div>
               ) : (
                 <div className="stack-list">
@@ -1212,7 +1753,7 @@ export default function App() {
                       <strong>{roadmapData.internship.title}</strong>
                       <small>{roadmapData.internship.org}</small>
                     </span>
-                    <em>{roadmapData.internship.missingSkills?.length || 0} skills missing</em>
+                    <em>{getSkillLabel(roadmapData.skill)}</em>
                   </button>
                 </div>
               )}
@@ -1229,9 +1770,9 @@ export default function App() {
                 <>
                   <div className="arena-top">
                     <div>
-                      <p className="eyebrow">Roadmap page</p>
+                      <p className="eyebrow">Focused roadmap</p>
                       <h2>{roadmapData.internship.title}</h2>
-                      <p>{roadmapData.internship.org} · {roadmapData.internship.location}</p>
+                      <p>{roadmapData.internship.org} - {roadmapData.internship.location}</p>
                     </div>
                     <div className="hero-actions">
                       <button
@@ -1242,30 +1783,52 @@ export default function App() {
                       >
                         Apply now
                       </button>
-                      <button className="action-btn secondary" type="button" onClick={() => navigate('/qualified')}>Back to internships</button>
+                      <button className="action-btn secondary" type="button" onClick={() => navigate('/growth-picks')}>Back to Growth Picks</button>
                     </div>
                   </div>
 
                   <div className="gamification-panel">
                     <div>
-                      <p className="eyebrow">Gamification bar</p>
+                      <p className="eyebrow">Animated progress</p>
                       <h3>{roadmapProgress.completed} of {roadmapProgress.total} topics completed</h3>
-                      <p className="muted-copy">XP: {roadmapBadge.xp} · Badge: {roadmapBadge.badge}</p>
+                      <p className="muted-copy">XP: {roadmapBadge.xp} - Badge: {roadmapBadge.badge}</p>
                     </div>
                     <div className="progress-meter">
                       <div className={`progress-meter-bar ${roadmapCompleted ? 'complete' : ''}`} style={{ width: `${roadmapProgressPercent}%` }} />
                     </div>
-                    <p className="muted-copy">Progress stays saved, so next time you open this roadmap you continue from the same point.</p>
+                    <p className="muted-copy">Complete the final topic to add this skill to your profile.</p>
                   </div>
 
                   <div className="chatbot-panel chatbot-panel-top">
                     <div className="chatbot-panel-head">
                       <div className="panel-heading compact">
                         <h2>AI Roadmap Copilot</h2>
-                        <p>This page opens only from internships that still have missing skills.</p>
+                        <p>Ask about the active topic order or mark the next topic complete.</p>
                       </div>
-                      <div className="chatbot-badge">Focused roadmap</div>
+                      <div className={`chatbot-badge ${roadmapData.roadmap.source === 'gemini' ? 'gemini' : 'fallback'}`}>
+                        {roadmapData.roadmap.source === 'gemini' ? 'Gemini generated' : 'Fallback syllabus'}
+                      </div>
                     </div>
+                    {roadmapData.roadmap.source !== 'gemini' && (
+                      <div className="roadmap-source-alert">
+                        <div>
+                          <span>Gemini unavailable: {roadmapData.roadmap.sourceDetail || 'unknown reason'}</span>
+                          {roadmapData.roadmap.rawPreview && (
+                            <details className="raw-preview">
+                              <summary>Raw Gemini response</summary>
+                              <pre>{roadmapData.roadmap.rawPreview}</pre>
+                            </details>
+                          )}
+                        </div>
+                        <button
+                          className="action-btn secondary"
+                          type="button"
+                          onClick={() => handleLoadRoadmap(roadmapData.internship.id, roadmapData.skill, true)}
+                        >
+                          Regenerate with Gemini
+                        </button>
+                      </div>
+                    )}
                     <div className="chat-shell">
                       <div className="chat-log">
                         {chatMessages.map((message, index) => (
@@ -1325,14 +1888,18 @@ export default function App() {
                         <div key={track.skill} className="track-card">
                           <div className="track-header">
                             <div>
-                              <h3>{labelForSkill(track.skill)}</h3>
+                              <h3>{getSkillLabel(track.skill)}</h3>
                               <p>{progress}% complete</p>
                             </div>
                             <div className="xp-ring">{progress}%</div>
                           </div>
                           <div className="level-stack">
-                            {track.levels.map(level => (
-                              <div key={level.id} className={`level-row ${level.completed ? 'done' : level.unlocked ? 'open' : 'locked'}`}>
+                            {track.levels.map((level, index) => (
+                              <div
+                                key={level.id}
+                                className={`level-row waterfall-level ${level.completed ? 'done' : level.unlocked ? 'open' : 'locked'}`}
+                                style={{ marginLeft: `${index % 2 === 0 ? 0 : 34}px` }}
+                              >
                                 <div className="level-row-body">
                                   <span>{level.label}</span>
                                   <strong>{level.topic}</strong>
@@ -1363,80 +1930,213 @@ export default function App() {
         )}
 
         {route === '/profile' && profileDraft && (
-          <section className="profile-layout glass-card">
-            <div className="profile-hero">
-              <div className="profile-avatar">
-                {profileDraft.photo ? <img src={profileDraft.photo} alt={profileDraft.fullName} /> : <span>{(profileDraft.fullName || 'P').slice(0, 1).toUpperCase()}</span>}
-              </div>
-              <div>
-                <h2>{profileDraft.fullName}</h2>
-                <p>{profileDraft.email}</p>
-              </div>
-            </div>
-
-            <ProfileStrength form={profileDraft} />
-
-            <div className="form-grid">
-              <label className="field block">
-                <span>Full name *</span>
-                <input value={profileDraft.fullName || ''} onChange={event => updateProfileField('fullName', event.target.value)} />
-              </label>
-              <label className="field block">
-                <span>Phone</span>
-                <input value={profileDraft.phone || ''} onChange={event => updateProfileField('phone', event.target.value)} />
-              </label>
-              <label className="field block full">
-                <span>Address</span>
-                <textarea rows="3" value={profileDraft.address || ''} onChange={event => updateProfileField('address', event.target.value)} />
-              </label>
-              <label className="field block">
-                <span>Highest qualification</span>
-                <select value={profileDraft.highestQualification || 'graduation'} onChange={event => updateProfileField('highestQualification', event.target.value)}>
-                  {QUALIFICATIONS.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
-                </select>
-              </label>
-              <div className="field block full">
-                <span>Preferred location</span>
-                <button className="action-btn secondary" type="button" onClick={() => fetchBrowserLocation('profile')}>
-                  Refresh current location for distance ranking
-                </button>
-                <div className="location-grid profile-location-grid">
-                  {LOCATIONS.map(location => (
-                    <button
-                      key={location}
-                      type="button"
-                      className={`location-card ${(profileDraft.preferredLocations || [])[0] === location ? 'selected' : ''}`}
-                      onClick={() => selectDraftLocation(location)}
-                    >
-                      <strong>{location}</strong>
-                      <span>{(profileDraft.preferredLocations || [])[0] === location ? 'Selected' : 'Set as preferred location'}</span>
-                    </button>
-                  ))}
+          <section className={`profile-layout professional-profile ${profileEditing ? 'editing' : ''}`}>
+            <div className="glass-card profile-pro-hero">
+              <div className="profile-cover-strip" />
+              <div className="profile-pro-main">
+                <div className="profile-avatar large">
+                  {profileDraft.photo ? <img src={profileDraft.photo} alt={profileDraft.fullName} /> : <span>{(profileDraft.fullName || 'P').slice(0, 1).toUpperCase()}</span>}
                 </div>
-              </div>
-              <div className="field block full">
-                <span>Academic details</span>
-                <div className="academic-section-stack">
-                  {renderAcademicSections(profileDraft, updateProfileNestedField)}
+                <div className="profile-title-block">
+                  <p className="eyebrow">Candidate profile</p>
+                  <h2>{profileDraft.fullName || 'Unnamed candidate'}</h2>
+                  <p>{profileDraft.email} - {profileDraft.preferredLocations?.[0] || 'No preferred location'}</p>
+                  <div className="profile-link-row">
+                    {profileDraft.socialLinks?.github ? <a href={profileDraft.socialLinks.github} target="_blank" rel="noreferrer">GitHub</a> : <span>GitHub not connected</span>}
+                    {profileDraft.socialLinks?.linkedin ? <a href={profileDraft.socialLinks.linkedin} target="_blank" rel="noreferrer">LinkedIn</a> : <span>LinkedIn not connected</span>}
+                  </div>
                 </div>
-              </div>
-              <div className="field block full">
-                <span>Skills</span>
-                <div className="chip-row large">
-                  {SKILL_OPTIONS.map(skill => (
-                    <button
-                      key={skill}
-                      className={`skill-chip ${profileDraft.skills?.includes(skill) ? 'selected' : ''}`}
-                      type="button"
-                      onClick={() => toggleDraftSkill(skill)}
-                    >
-                      {labelForSkill(skill)}
-                    </button>
-                  ))}
+                <div className="profile-actions">
+                  {!profileEditing ? (
+                    <button className="action-btn primary" type="button" onClick={() => setProfileEditing(true)}>Edit profile</button>
+                  ) : (
+                    <>
+                      <button className="action-btn secondary" type="button" onClick={cancelProfileEdit}>Cancel</button>
+                      <button className="action-btn primary" type="button" onClick={saveProfile}>Save changes</button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
-            <button className="action-btn primary" type="button" onClick={saveProfile}>Save profile changes</button>
+
+            {!profileEditing ? (
+              <>
+                <ProfileStrength form={profileDraft} />
+                <div className="profile-pro-grid">
+                  <article className="glass-card profile-panel">
+                    <h3>About</h3>
+                    <div className="profile-fact-list">
+                      <span><strong>Phone</strong>{profileDraft.phone || 'Not added'}</span>
+                      <span><strong>Aadhaar</strong>{profileDraft.aadhaarMasked || maskAadhaar(profileDraft.aadhaarNumber)}</span>
+                      <span><strong>Address</strong>{profileDraft.address || 'Not added'}</span>
+                      <span><strong>Qualification</strong>{QUALIFICATIONS.find(item => item.value === profileDraft.highestQualification)?.label || 'Not added'}</span>
+                    </div>
+                  </article>
+
+                  <article className="glass-card profile-panel">
+                    <h3>Skills</h3>
+                    <div className="chip-row large">
+                      {(profileDraft.skills || []).length ? profileDraft.skills.map(skill => (
+                        <span key={skill} className="skill-chip selected">{getSkillLabel(skill)}</span>
+                      )) : <p className="muted-copy">No skills added yet.</p>}
+                    </div>
+                  </article>
+
+                  <article className="glass-card profile-panel wide">
+                    <h3>Education timeline</h3>
+                    <div className="education-timeline">
+                      {getVisibleAcademicSections(profileDraft.highestQualification).map(section => (
+                        <div className="timeline-item" key={section.key}>
+                          <span className="timeline-dot" />
+                          <div>
+                            <strong>{section.title}</strong>
+                            <p>{section.fields.map(field => profileDraft[section.key]?.[field.key]).filter(Boolean).join(' - ') || 'Details not added'}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+
+                  <article className="glass-card profile-panel">
+                    <h3>Documents</h3>
+                    <div className="document-list">
+                      {getRequiredDocumentKinds(profileDraft.highestQualification).map(kind => (
+                        <span key={kind} className={profileDraft.documents?.[kind] ? 'ready' : 'missing'}>
+                          <strong>{DOCUMENT_LABELS[kind]}</strong>
+                          {profileDraft.documents?.[kind]?.originalName || 'Missing'}
+                        </span>
+                      ))}
+                    </div>
+                  </article>
+
+                  <article className="glass-card profile-panel">
+                    <h3>Applications</h3>
+                    <div className="profile-stat-stack">
+                      <strong>{dashboard.applications?.length || 0}</strong>
+                      <span>submitted internships</span>
+                    </div>
+                  </article>
+
+                  <article className="glass-card profile-panel wide github-panel">
+                    <div className="section-heading-row compact-row">
+                      <div>
+                        <h3>GitHub contribution timeline</h3>
+                        <p className="muted-copy">{getGithubUsername(profileDraft.socialLinks?.github) ? `@${getGithubUsername(profileDraft.socialLinks?.github)}` : 'Connect a GitHub profile to show public contributions.'}</p>
+                      </div>
+                      {profileDraft.socialLinks?.github && <a className="action-btn secondary" href={profileDraft.socialLinks.github} target="_blank" rel="noreferrer">Open GitHub</a>}
+                    </div>
+                    {getGithubUsername(profileDraft.socialLinks?.github) ? (
+                      <img
+                        className="github-contrib-chart"
+                        alt="GitHub contribution timeline"
+                        src={`https://ghchart.rshah.org/${encodeURIComponent(getGithubUsername(profileDraft.socialLinks.github))}`}
+                      />
+                    ) : (
+                      <div className="placeholder-copy">No GitHub profile connected.</div>
+                    )}
+                  </article>
+                </div>
+              </>
+            ) : (
+              <section className="glass-card profile-edit-card">
+                <div className="panel-heading">
+                  <h2>Edit profile</h2>
+                  <p>Update your public profile, academic records, documents, and matching signals.</p>
+                </div>
+                <div className="form-grid">
+                  <label className="field block">
+                    <span>Full name *</span>
+                    <input value={profileDraft.fullName || ''} onChange={event => updateProfileField('fullName', event.target.value)} />
+                  </label>
+                  <label className="field block">
+                    <span>Phone</span>
+                    <input value={profileDraft.phone || ''} onChange={event => updateProfileField('phone', event.target.value)} />
+                  </label>
+                  <label className="field block">
+                    <span>Aadhaar number</span>
+                    <input
+                      inputMode="numeric"
+                      maxLength="12"
+                      value={profileDraft.aadhaarNumber || ''}
+                      onChange={event => updateProfileField('aadhaarNumber', event.target.value.replace(/\D/g, '').slice(0, 12))}
+                    />
+                  </label>
+                  <label className="field block">
+                    <span>Highest qualification</span>
+                    <select value={profileDraft.highestQualification || 'graduation'} onChange={event => updateProfileField('highestQualification', event.target.value)}>
+                      {QUALIFICATIONS.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+                    </select>
+                  </label>
+                  <label className="field block">
+                    <span>GitHub profile</span>
+                    <input
+                      value={profileDraft.socialLinks?.github || ''}
+                      onChange={event => updateProfileField('socialLinks', { ...(profileDraft.socialLinks || {}), github: event.target.value })}
+                    />
+                  </label>
+                  <label className="field block">
+                    <span>LinkedIn profile</span>
+                    <input
+                      value={profileDraft.socialLinks?.linkedin || ''}
+                      onChange={event => updateProfileField('socialLinks', { ...(profileDraft.socialLinks || {}), linkedin: event.target.value })}
+                    />
+                  </label>
+                  <label className="field block full">
+                    <span>Address</span>
+                    <textarea rows="3" value={profileDraft.address || ''} onChange={event => updateProfileField('address', event.target.value)} />
+                  </label>
+                  <div className="field block full">
+                    <span>Preferred location</span>
+                    <button className="action-btn secondary" type="button" onClick={() => fetchBrowserLocation('profile')}>
+                      Refresh current location for distance ranking
+                    </button>
+                    <div className="location-grid profile-location-grid">
+                      {locationOptions.map(location => (
+                        <button
+                          key={location}
+                          type="button"
+                          className={`location-card ${(profileDraft.preferredLocations || [])[0] === location ? 'selected' : ''}`}
+                          onClick={() => selectDraftLocation(location)}
+                        >
+                          <strong>{location}</strong>
+                          <span>{(profileDraft.preferredLocations || [])[0] === location ? 'Selected' : 'Set as preferred location'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="field block full">
+                    <span>Documents</span>
+                    <div className="profile-document-grid">
+                      {renderDocumentPicker(profileDraft, 'resume', onProfileDocumentSelect)}
+                    </div>
+                  </div>
+                  <div className="field block full">
+                    <span>Academic details</span>
+                    <div className="academic-section-stack">
+                      {renderAcademicSections(profileDraft, updateProfileNestedField, {
+                        showDocuments: true,
+                        onDocumentSelect: onProfileDocumentSelect,
+                      })}
+                    </div>
+                  </div>
+                  <div className="field block full">
+                    <span>Skills</span>
+                    <div className="chip-row large">
+                      {skillOptions.map(skill => (
+                        <button
+                          key={skill}
+                          className={`skill-chip ${profileDraft.skills?.includes(skill) ? 'selected' : ''}`}
+                          type="button"
+                          onClick={() => toggleDraftSkill(skill)}
+                        >
+                          {getSkillLabel(skill)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
           </section>
         )}
 
@@ -1469,7 +2169,7 @@ export default function App() {
           <div className="apply-modal glass-card" onClick={event => event.stopPropagation()}>
             <div className="panel-heading">
               <h2>Apply for {applyModalInternship.title}</h2>
-              <p>{applyModalInternship.org} · Fill in the required details before submission.</p>
+              <p>{applyModalInternship.org} - Fill in the required details before submission.</p>
             </div>
 
             <div className="form-grid">
@@ -1505,23 +2205,137 @@ export default function App() {
                 />
               </label>
               <label className="field block">
-                <span>GitHub profile</span>
+                <span>Aadhaar number</span>
                 <input
-                  placeholder="https://github.com/yourname"
-                  value={applyState[applyModalInternship.id]?.githubProfile || ''}
+                  inputMode="numeric"
+                  maxLength="12"
+                  value={applyState[applyModalInternship.id]?.aadhaarNumber || ''}
                   onChange={event => setApplyState(prev => ({
                     ...prev,
-                    [applyModalInternship.id]: { ...(prev[applyModalInternship.id] || {}), githubProfile: event.target.value },
+                    [applyModalInternship.id]: { ...(prev[applyModalInternship.id] || {}), aadhaarNumber: event.target.value.replace(/\D/g, '').slice(0, 12) },
                   }))}
                 />
               </label>
-              <label className="field block full">
-                <span>Upload resume *</span>
-                <input type="file" accept=".pdf,.doc,.docx" onChange={event => onResumeSelect(applyModalInternship.id, event.target.files?.[0])} />
-                {applyState[applyModalInternship.id]?.resumeName && (
-                  <p className="muted-copy resume-label">Selected: {applyState[applyModalInternship.id].resumeName}</p>
-                )}
+              <label className="field block">
+                <span>Preferred location</span>
+                <select
+                  value={applyState[applyModalInternship.id]?.preferredLocations?.[0] || ''}
+                  onChange={event => setApplyState(prev => ({
+                    ...prev,
+                    [applyModalInternship.id]: { ...(prev[applyModalInternship.id] || {}), preferredLocations: [event.target.value] },
+                  }))}
+                >
+                  <option value="">Select location</option>
+                  {locationOptions.map(location => <option key={location} value={location}>{location}</option>)}
+                </select>
               </label>
+              <label className="field block full">
+                <span>Address</span>
+                <textarea
+                  rows="3"
+                  value={applyState[applyModalInternship.id]?.address || ''}
+                  onChange={event => setApplyState(prev => ({
+                    ...prev,
+                    [applyModalInternship.id]: { ...(prev[applyModalInternship.id] || {}), address: event.target.value },
+                  }))}
+                />
+              </label>
+              <label className="field block">
+                <span>GitHub profile</span>
+                <input
+                  placeholder="https://github.com/yourname"
+                  value={applyState[applyModalInternship.id]?.socialLinks?.github || ''}
+                  onChange={event => setApplyState(prev => ({
+                    ...prev,
+                    [applyModalInternship.id]: {
+                      ...(prev[applyModalInternship.id] || {}),
+                      socialLinks: { ...(prev[applyModalInternship.id]?.socialLinks || {}), github: event.target.value },
+                    },
+                  }))}
+                />
+              </label>
+              <label className="field block">
+                <span>LinkedIn profile</span>
+                <input
+                  placeholder="https://linkedin.com/in/yourname"
+                  value={applyState[applyModalInternship.id]?.socialLinks?.linkedin || ''}
+                  onChange={event => setApplyState(prev => ({
+                    ...prev,
+                    [applyModalInternship.id]: {
+                      ...(prev[applyModalInternship.id] || {}),
+                      socialLinks: { ...(prev[applyModalInternship.id]?.socialLinks || {}), linkedin: event.target.value },
+                    },
+                  }))}
+                />
+              </label>
+              <label className="field block">
+                <span>Highest qualification</span>
+                <select
+                  value={applyState[applyModalInternship.id]?.highestQualification || 'graduation'}
+                  onChange={event => setApplyState(prev => ({
+                    ...prev,
+                    [applyModalInternship.id]: { ...(prev[applyModalInternship.id] || {}), highestQualification: event.target.value },
+                  }))}
+                >
+                  {QUALIFICATIONS.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+                </select>
+              </label>
+              <label className="field block full">
+                <span>Documents</span>
+                <div className="profile-document-grid">
+                  {renderDocumentPicker(
+                    applyState[applyModalInternship.id] || {},
+                    'resume',
+                    (kind, file) => onApplicationDocumentSelect(applyModalInternship.id, kind, file),
+                  )}
+                </div>
+              </label>
+              <div className="field block full">
+                <span>Academic details and marksheets</span>
+                <div className="academic-section-stack">
+                  {renderAcademicSections(
+                    applyState[applyModalInternship.id] || {},
+                    (group, key, value) => setApplyState(prev => ({
+                      ...prev,
+                      [applyModalInternship.id]: {
+                        ...(prev[applyModalInternship.id] || {}),
+                        [group]: { ...(prev[applyModalInternship.id]?.[group] || {}), [key]: value },
+                      },
+                    })),
+                    {
+                      showDocuments: true,
+                      onDocumentSelect: (kind, file) => onApplicationDocumentSelect(applyModalInternship.id, kind, file),
+                    },
+                  )}
+                </div>
+              </div>
+              <div className="field block full">
+                <span>Skills</span>
+                <div className="chip-row large">
+                  {skillOptions.map(skill => {
+                    const selected = applyState[applyModalInternship.id]?.skills?.includes(skill);
+                    return (
+                      <button
+                        key={skill}
+                        className={`skill-chip ${selected ? 'selected' : ''}`}
+                        type="button"
+                        onClick={() => setApplyState(prev => {
+                          const current = prev[applyModalInternship.id]?.skills || [];
+                          return {
+                            ...prev,
+                            [applyModalInternship.id]: {
+                              ...(prev[applyModalInternship.id] || {}),
+                              skills: selected ? current.filter(item => item !== skill) : [...current, skill],
+                            },
+                          };
+                        })}
+                      >
+                        {getSkillLabel(skill)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <label className="field block full">
                 <span>Resume summary</span>
                 <textarea
