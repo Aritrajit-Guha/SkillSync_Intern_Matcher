@@ -1787,3 +1787,1042 @@ textarea {
   background: #ffffff;
 }
 
+/* Luxury visual refresh: ivory, gold, white, and black only. */
+body {
+  color: var(--text);
+  background:
+    linear-gradient(118deg, rgba(112, 92, 54, 0.08) 0 1px, transparent 1px 100%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(247, 240, 226, 0.82) 42%, rgba(255, 252, 244, 0.94)),
+    radial-gradient(circle at 12% 8%, rgba(255, 255, 255, 0.9), transparent 28%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+body::selection {
+  background: rgba(185, 139, 62, 0.28);
+  color: #080806;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgba(185, 139, 62, 0.68);
+  outline-offset: 3px;
+}
+
+.hero-panel h1,
+.page-hero h1,
+.panel-heading h2,
+.roadmap-arena h2,
+.profile-layout h2,
+.premium-hero h1,
+.section-heading-row h2,
+.register-form-card .panel-heading h2,
+.register-hero-inline h2,
+.register-promo h2,
+.login-header h1,
+.profile-title-block h2,
+.profile-panel h3,
+.gamification-panel h3,
+.empty-state h3 {
+  letter-spacing: 0;
+}
+
+.hero-panel h1,
+.page-hero h1,
+.panel-heading h2,
+.roadmap-arena h2,
+.profile-layout h2,
+.premium-hero h1,
+.section-heading-row h2,
+.register-hero-inline h2,
+.register-promo h2,
+.login-header h1,
+.profile-title-block h2,
+.profile-panel h3,
+.gamification-panel h3,
+.empty-state h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: #080806;
+}
+
+.glass-card,
+.glass-stat,
+.stretch-item,
+.track-card,
+.level-row,
+.empty-state,
+.profile-panel,
+.profile-edit-card,
+.apply-modal,
+.login-card,
+.register-promo,
+.register-form-card,
+.register-topbar,
+.register-hero-inline {
+  border: 1px solid rgba(177, 134, 60, 0.34);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(255, 250, 239, 0.92)),
+    var(--surface);
+  color: var(--text);
+  box-shadow: 0 24px 70px rgba(36, 28, 12, 0.14), inset 0 0 0 1px rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(16px);
+}
+
+.glass-stat,
+.summary-pill,
+.form-section-card,
+.location-card,
+.catalog-controls,
+.preference-panel,
+.hero-showcase-card,
+.profile-fact-list span,
+.document-list span,
+.github-contrib-chart,
+.chatbot-panel-top,
+.chat-shell,
+.raw-preview pre {
+  background: rgba(255, 253, 247, 0.82);
+  border-color: rgba(177, 134, 60, 0.3);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.56);
+}
+
+.topbar {
+  border: 1px solid rgba(177, 134, 60, 0.32);
+  background: rgba(255, 250, 240, 0.9);
+  box-shadow: 0 18px 46px rgba(36, 28, 12, 0.16), inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(18px);
+}
+
+.brand-lockup strong,
+.register-brand strong {
+  color: #080806;
+  font-family: var(--font-display);
+  font-size: 1.28rem;
+  font-weight: 700;
+}
+
+.brand-lockup small,
+.register-brand small,
+.login-top-cta,
+.login-header p,
+.register-hero-inline p,
+.register-promo p,
+.register-promo ul,
+.hero-showcase-card span,
+.hero-showcase-card small,
+.profile-title-block p,
+.profile-fact-list span,
+.document-list span,
+.empty-state p,
+.helper-copy,
+.auth-subtitle,
+.internship-meta,
+.placeholder-copy {
+  color: var(--muted);
+}
+
+.brand-mark,
+.brand-orb,
+.register-brand-icon,
+.avatar-button,
+.profile-avatar {
+  background:
+    linear-gradient(145deg, #0b0b09 0%, #1d1911 100%);
+  color: #f3d997;
+  border: 1px solid rgba(185, 139, 62, 0.54);
+  box-shadow: 0 14px 30px rgba(10, 10, 8, 0.24), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.route-tabs {
+  border-color: rgba(177, 134, 60, 0.3);
+  background: rgba(255, 255, 255, 0.56);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.66);
+}
+
+.route-pill {
+  color: #211a0f;
+  border-color: transparent;
+  background: transparent;
+}
+
+.route-pill:hover,
+.profile-menu button:hover {
+  background: rgba(185, 139, 62, 0.1);
+}
+
+.route-pill.active {
+  color: #f5dfaa;
+  border-color: rgba(185, 139, 62, 0.5);
+  background: linear-gradient(135deg, #080806, #1d1911);
+  box-shadow: 0 10px 24px rgba(13, 12, 9, 0.24);
+}
+
+.profile-menu {
+  border: 1px solid rgba(177, 134, 60, 0.32);
+  background: rgba(255, 250, 240, 0.96);
+  box-shadow: 0 22px 50px rgba(36, 28, 12, 0.18);
+}
+
+input,
+select,
+textarea,
+.input-shell {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(177, 134, 60, 0.32);
+  color: #100f0c;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+input::placeholder,
+textarea::placeholder,
+.input-shell input::placeholder {
+  color: #9b907f;
+}
+
+select option {
+  background: #fffaf0;
+  color: #100f0c;
+}
+
+.field span,
+.section-title,
+.login-field > span {
+  color: #241d10;
+}
+
+.eyebrow,
+.micro-label,
+.success-copy,
+.catalog-fit-copy,
+.stretch-item em,
+.profile-link-row a,
+.profile-link-row span,
+.catalog-count,
+.raw-preview summary,
+.chat-role,
+.chatbot-badge,
+.text-link,
+.login-row .text-link {
+  color: var(--accent);
+}
+
+.action-btn,
+.login-primary-btn,
+.google-btn,
+.register-btn.ghost,
+.register-login-chip,
+.mission-check {
+  border: 1px solid rgba(177, 134, 60, 0.34);
+  box-shadow: none;
+}
+
+.action-btn.primary,
+.login-primary-btn,
+.register-submit {
+  background: linear-gradient(135deg, #080806 0%, #1f1a10 62%, #4e3916 100%);
+  color: #f6dfaa;
+  border-color: rgba(185, 139, 62, 0.58);
+  box-shadow: 0 14px 28px rgba(18, 15, 9, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.action-btn.secondary,
+.action-btn.tertiary,
+.google-btn,
+.register-btn.ghost,
+.register-login-chip,
+.mission-check {
+  background: rgba(255, 253, 247, 0.82);
+  color: #14110b;
+}
+
+.action-btn.disabled {
+  background: rgba(226, 215, 194, 0.68);
+  color: #8e826f;
+  border-color: rgba(177, 134, 60, 0.18);
+}
+
+.action-btn:hover:not(:disabled),
+.login-primary-btn:hover,
+.google-btn:hover,
+.register-btn.ghost:hover,
+.register-login-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(36, 28, 12, 0.18);
+}
+
+.skill-chip {
+  background: rgba(255, 253, 247, 0.72);
+  color: #16130c;
+  border-color: rgba(177, 134, 60, 0.28);
+}
+
+.skill-chip.selected,
+.location-card.selected,
+.mission-check.checked {
+  background: linear-gradient(135deg, #0b0b09, #1f1a10);
+  color: #f6dfaa;
+  border-color: rgba(185, 139, 62, 0.58);
+}
+
+.premium-hero {
+  border: 1px solid rgba(177, 134, 60, 0.42);
+  background:
+    radial-gradient(circle, rgba(185, 139, 62, 0.16) 1px, transparent 1.7px) 0 0 / 18px 18px,
+    linear-gradient(115deg, rgba(255, 255, 255, 0.94), rgba(255, 250, 239, 0.84) 52%, rgba(241, 229, 207, 0.9)),
+    #fffaf0;
+  box-shadow: 0 24px 70px rgba(36, 28, 12, 0.16);
+}
+
+.premium-hero::after {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(185, 139, 62, 0.72), transparent);
+}
+
+.premium-hero h1 {
+  color: #080806;
+  text-transform: none;
+}
+
+.premium-hero p {
+  color: #514a3f;
+}
+
+.hero-showcase-card {
+  border-radius: 8px;
+}
+
+.hero-showcase-card strong {
+  color: #080806;
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+.hero-slide-dots button {
+  background: rgba(15, 14, 11, 0.2);
+}
+
+.hero-slide-dots button.active {
+  background: #b98b3e;
+}
+
+.home-hero,
+.page-hero {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(255, 250, 239, 0.78));
+  border: 1px solid rgba(177, 134, 60, 0.28);
+  box-shadow: 0 18px 48px rgba(36, 28, 12, 0.12);
+}
+
+.internship-card {
+  border: 1px solid rgba(177, 134, 60, 0.32);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 250, 239, 0.94));
+  box-shadow: 0 18px 44px rgba(36, 28, 12, 0.12);
+}
+
+.internship-card h3,
+.track-card h3,
+.stretch-item strong {
+  color: #080806;
+}
+
+.score-badge,
+.xp-ring {
+  color: #080806;
+  border-color: rgba(177, 134, 60, 0.42);
+  background:
+    linear-gradient(145deg, #f8e7b8, #b98b3e 62%, #8a6424);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42), 0 12px 24px rgba(111, 80, 28, 0.2);
+}
+
+.internship-status-pill {
+  color: #20180c;
+  background: rgba(255, 253, 247, 0.72);
+  border-color: rgba(177, 134, 60, 0.3);
+}
+
+.internship-status-pill.ready {
+  color: #7a581f;
+  background: rgba(185, 139, 62, 0.12);
+}
+
+.internship-status-pill.gap {
+  color: #11100d;
+  background: rgba(245, 223, 170, 0.5);
+}
+
+.chatbot-panel {
+  border-top-color: rgba(177, 134, 60, 0.28);
+}
+
+.chatbot-panel-top {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(255, 250, 239, 0.86));
+}
+
+.chat-shell {
+  background: rgba(255, 252, 244, 0.64);
+}
+
+.chat-bubble {
+  border-color: rgba(177, 134, 60, 0.3);
+}
+
+.chat-bubble.assistant {
+  background: rgba(255, 253, 247, 0.82);
+}
+
+.chat-bubble.user {
+  background: #0b0b09;
+  color: #f6dfaa;
+}
+
+.chat-bubble.user .chat-role {
+  color: #d5b66f;
+}
+
+.chatbot-badge.gemini,
+.chatbot-badge.fallback {
+  color: var(--accent);
+  border-color: rgba(177, 134, 60, 0.38);
+}
+
+.roadmap-source-alert {
+  color: #5f5548;
+  border-color: rgba(177, 134, 60, 0.3);
+  background: rgba(255, 250, 239, 0.82);
+}
+
+.raw-preview pre {
+  background: #100f0c;
+  color: #f6dfaa;
+}
+
+.progress-meter {
+  background: rgba(33, 26, 15, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(177, 134, 60, 0.26);
+}
+
+.progress-meter-bar,
+.progress-meter-bar.complete {
+  background: linear-gradient(90deg, #080806 0%, #b98b3e 48%, #f6dfaa 100%);
+  box-shadow: 0 0 22px rgba(185, 139, 62, 0.36);
+}
+
+.progress-meter-bar::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.64), transparent);
+}
+
+.level-row {
+  border-left-color: rgba(177, 134, 60, 0.46);
+}
+
+.level-row.done {
+  border-color: rgba(177, 134, 60, 0.42);
+  border-left-color: #b98b3e;
+}
+
+.timeline-dot {
+  background: #b98b3e;
+  box-shadow: 0 0 0 5px rgba(185, 139, 62, 0.14);
+}
+
+.profile-cover-strip {
+  background:
+    radial-gradient(circle, rgba(185, 139, 62, 0.15) 1px, transparent 1.7px) 0 0 / 16px 16px,
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(245, 226, 184, 0.66), rgba(255, 250, 239, 0.92));
+  border-bottom-color: rgba(177, 134, 60, 0.32);
+}
+
+.profile-avatar.large {
+  border-color: #fffaf0;
+}
+
+.profile-link-row a,
+.profile-link-row span {
+  background: rgba(255, 253, 247, 0.72);
+}
+
+.document-list .ready {
+  border-color: rgba(177, 134, 60, 0.48);
+}
+
+.document-list .missing {
+  border-color: rgba(143, 36, 54, 0.28);
+}
+
+.modal-backdrop {
+  background: rgba(16, 14, 10, 0.58);
+  backdrop-filter: blur(8px);
+}
+
+.toast {
+  color: #100f0c;
+  background: rgba(255, 250, 240, 0.96);
+  border-color: rgba(177, 134, 60, 0.36);
+  box-shadow: 0 16px 40px rgba(36, 28, 12, 0.16);
+}
+
+.login-card {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.92), rgba(255, 250, 239, 0.94)),
+    #fffaf0;
+}
+
+.login-row .text-link,
+.register-hero-inline h2 span,
+.register-promo h2 span {
+  color: var(--accent);
+}
+
+.remember {
+  color: #53483a;
+}
+
+.remember input {
+  accent-color: #b98b3e;
+}
+
+.login-divider {
+  color: #8b806f;
+}
+
+.login-divider::before,
+.login-divider::after {
+  background: rgba(177, 134, 60, 0.28);
+}
+
+.google-btn {
+  background: rgba(255, 253, 247, 0.86);
+  color: #100f0c;
+}
+
+.login-privacy {
+  color: #766a59;
+}
+
+.register-topbar {
+  background: rgba(255, 250, 240, 0.92);
+}
+
+.register-nav {
+  color: #5b5144;
+}
+
+.register-promo,
+.register-form-card,
+.register-hero-inline {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(255, 250, 239, 0.92)),
+    #fffaf0;
+}
+
+.register-form-card input,
+.register-form-card select,
+.register-form-card textarea {
+  background: rgba(255, 255, 255, 0.84);
+  border-color: rgba(177, 134, 60, 0.32);
+}
+
+:root[data-theme='light'] body {
+  background:
+    linear-gradient(118deg, rgba(112, 92, 54, 0.08) 0 1px, transparent 1px 100%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(247, 240, 226, 0.82) 42%, rgba(255, 252, 244, 0.94)),
+    var(--bg);
+}
+
+:root[data-theme='light'] .action-btn.secondary,
+:root[data-theme='light'] .action-btn.tertiary,
+:root[data-theme='light'] .route-pill,
+:root[data-theme='light'] .text-link {
+  background: rgba(255, 253, 247, 0.78);
+}
+
+:root[data-theme='light'] .route-pill {
+  background: transparent;
+}
+
+:root[data-theme='light'] .route-pill.active {
+  background: linear-gradient(135deg, #080806, #1d1911);
+}
+
+:root[data-theme='dark'] body {
+  color: var(--text);
+  background:
+    linear-gradient(115deg, rgba(255, 213, 107, 0.08) 0 1px, transparent 1px 100%),
+    radial-gradient(circle at 78% 10%, rgba(0, 240, 255, 0.14), transparent 28%),
+    radial-gradient(circle at 12% 72%, rgba(255, 213, 107, 0.11), transparent 32%),
+    linear-gradient(150deg, #020202 0%, #090806 48%, #030303 100%);
+  background-attachment: fixed;
+}
+
+:root[data-theme='dark'] body::selection {
+  background: rgba(0, 240, 255, 0.32);
+  color: #ffffff;
+}
+
+:root[data-theme='dark'] button:focus-visible,
+:root[data-theme='dark'] input:focus-visible,
+:root[data-theme='dark'] select:focus-visible,
+:root[data-theme='dark'] textarea:focus-visible {
+  outline-color: rgba(0, 240, 255, 0.82);
+  box-shadow: 0 0 0 4px rgba(0, 240, 255, 0.12);
+}
+
+:root[data-theme='dark'] .hero-panel h1,
+:root[data-theme='dark'] .page-hero h1,
+:root[data-theme='dark'] .panel-heading h2,
+:root[data-theme='dark'] .roadmap-arena h2,
+:root[data-theme='dark'] .profile-layout h2,
+:root[data-theme='dark'] .premium-hero h1,
+:root[data-theme='dark'] .section-heading-row h2,
+:root[data-theme='dark'] .register-hero-inline h2,
+:root[data-theme='dark'] .register-promo h2,
+:root[data-theme='dark'] .login-header h1,
+:root[data-theme='dark'] .profile-title-block h2,
+:root[data-theme='dark'] .profile-panel h3,
+:root[data-theme='dark'] .gamification-panel h3,
+:root[data-theme='dark'] .empty-state h3 {
+  color: #fff7e6;
+  text-shadow: 0 0 24px rgba(255, 213, 107, 0.13);
+}
+
+:root[data-theme='dark'] .glass-card,
+:root[data-theme='dark'] .glass-stat,
+:root[data-theme='dark'] .stretch-item,
+:root[data-theme='dark'] .track-card,
+:root[data-theme='dark'] .level-row,
+:root[data-theme='dark'] .empty-state,
+:root[data-theme='dark'] .profile-panel,
+:root[data-theme='dark'] .profile-edit-card,
+:root[data-theme='dark'] .apply-modal,
+:root[data-theme='dark'] .login-card,
+:root[data-theme='dark'] .register-promo,
+:root[data-theme='dark'] .register-form-card,
+:root[data-theme='dark'] .register-topbar,
+:root[data-theme='dark'] .register-hero-inline {
+  color: var(--text);
+  border-color: rgba(255, 213, 107, 0.34);
+  background:
+    linear-gradient(145deg, rgba(18, 15, 9, 0.94), rgba(7, 7, 7, 0.92)),
+    var(--surface);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.58),
+    0 0 34px rgba(0, 240, 255, 0.06),
+    inset 0 0 0 1px rgba(255, 213, 107, 0.08);
+}
+
+:root[data-theme='dark'] .glass-stat,
+:root[data-theme='dark'] .summary-pill,
+:root[data-theme='dark'] .form-section-card,
+:root[data-theme='dark'] .location-card,
+:root[data-theme='dark'] .catalog-controls,
+:root[data-theme='dark'] .preference-panel,
+:root[data-theme='dark'] .hero-showcase-card,
+:root[data-theme='dark'] .profile-fact-list span,
+:root[data-theme='dark'] .document-list span,
+:root[data-theme='dark'] .github-contrib-chart,
+:root[data-theme='dark'] .chatbot-panel-top,
+:root[data-theme='dark'] .chat-shell,
+:root[data-theme='dark'] .raw-preview pre {
+  color: var(--text);
+  border-color: rgba(255, 213, 107, 0.28);
+  background: rgba(10, 9, 7, 0.82);
+  box-shadow: inset 0 0 0 1px rgba(255, 213, 107, 0.06), 0 0 22px rgba(0, 240, 255, 0.04);
+}
+
+:root[data-theme='dark'] .topbar {
+  border-color: rgba(255, 213, 107, 0.36);
+  background: rgba(4, 4, 4, 0.88);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.62), 0 0 34px rgba(0, 240, 255, 0.08);
+}
+
+:root[data-theme='dark'] .brand-lockup strong,
+:root[data-theme='dark'] .register-brand strong {
+  color: #fff7e6;
+}
+
+:root[data-theme='dark'] .brand-lockup small,
+:root[data-theme='dark'] .register-brand small,
+:root[data-theme='dark'] .login-top-cta,
+:root[data-theme='dark'] .login-header p,
+:root[data-theme='dark'] .register-hero-inline p,
+:root[data-theme='dark'] .register-promo p,
+:root[data-theme='dark'] .register-promo ul,
+:root[data-theme='dark'] .hero-showcase-card span,
+:root[data-theme='dark'] .hero-showcase-card small,
+:root[data-theme='dark'] .profile-title-block p,
+:root[data-theme='dark'] .profile-fact-list span,
+:root[data-theme='dark'] .document-list span,
+:root[data-theme='dark'] .empty-state p,
+:root[data-theme='dark'] .helper-copy,
+:root[data-theme='dark'] .auth-subtitle,
+:root[data-theme='dark'] .internship-meta,
+:root[data-theme='dark'] .placeholder-copy,
+:root[data-theme='dark'] .location-card span {
+  color: var(--muted);
+}
+
+:root[data-theme='dark'] .brand-mark,
+:root[data-theme='dark'] .brand-orb,
+:root[data-theme='dark'] .register-brand-icon,
+:root[data-theme='dark'] .avatar-button,
+:root[data-theme='dark'] .profile-avatar {
+  color: #050505;
+  border-color: rgba(255, 213, 107, 0.64);
+  background: linear-gradient(135deg, #ffd56b 0%, #f0b33d 48%, #00f0ff 100%);
+  box-shadow: 0 0 26px rgba(0, 240, 255, 0.22), 0 14px 34px rgba(0, 0, 0, 0.38);
+}
+
+:root[data-theme='dark'] .route-tabs {
+  border-color: rgba(255, 213, 107, 0.28);
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 0 0 1px rgba(255, 213, 107, 0.06);
+}
+
+:root[data-theme='dark'] .route-pill {
+  color: #d7ccb2;
+  background: transparent;
+}
+
+:root[data-theme='dark'] .route-pill:hover,
+:root[data-theme='dark'] .profile-menu button:hover {
+  color: #ffffff;
+  background: rgba(0, 240, 255, 0.1);
+}
+
+:root[data-theme='dark'] .route-pill.active {
+  color: #030303;
+  border-color: rgba(0, 240, 255, 0.55);
+  background: linear-gradient(135deg, #ffd56b 0%, #00f0ff 100%);
+  box-shadow: 0 0 24px rgba(0, 240, 255, 0.26);
+}
+
+:root[data-theme='dark'] .profile-menu {
+  border-color: rgba(255, 213, 107, 0.34);
+  background: rgba(8, 8, 7, 0.96);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.62);
+}
+
+:root[data-theme='dark'] .profile-menu button {
+  color: var(--text);
+}
+
+:root[data-theme='dark'] input,
+:root[data-theme='dark'] select,
+:root[data-theme='dark'] textarea,
+:root[data-theme='dark'] .input-shell {
+  color: var(--text);
+  border-color: rgba(255, 213, 107, 0.3);
+  background: rgba(2, 2, 2, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 213, 107, 0.08), 0 0 0 1px rgba(0, 240, 255, 0.02);
+}
+
+:root[data-theme='dark'] input::placeholder,
+:root[data-theme='dark'] textarea::placeholder,
+:root[data-theme='dark'] .input-shell input::placeholder {
+  color: #8d836f;
+}
+
+:root[data-theme='dark'] select option {
+  color: var(--text);
+  background: #080806;
+}
+
+:root[data-theme='dark'] .field span,
+:root[data-theme='dark'] .section-title,
+:root[data-theme='dark'] .login-field > span {
+  color: #f5e9ca;
+}
+
+:root[data-theme='dark'] .eyebrow,
+:root[data-theme='dark'] .micro-label,
+:root[data-theme='dark'] .success-copy,
+:root[data-theme='dark'] .catalog-fit-copy,
+:root[data-theme='dark'] .stretch-item em,
+:root[data-theme='dark'] .profile-link-row a,
+:root[data-theme='dark'] .profile-link-row span,
+:root[data-theme='dark'] .catalog-count,
+:root[data-theme='dark'] .raw-preview summary,
+:root[data-theme='dark'] .chat-role,
+:root[data-theme='dark'] .chatbot-badge,
+:root[data-theme='dark'] .text-link,
+:root[data-theme='dark'] .login-row .text-link {
+  color: var(--accent);
+}
+
+:root[data-theme='dark'] .action-btn,
+:root[data-theme='dark'] .login-primary-btn,
+:root[data-theme='dark'] .google-btn,
+:root[data-theme='dark'] .register-btn.ghost,
+:root[data-theme='dark'] .register-login-chip,
+:root[data-theme='dark'] .mission-check {
+  border-color: rgba(255, 213, 107, 0.34);
+}
+
+:root[data-theme='dark'] .action-btn.primary,
+:root[data-theme='dark'] .login-primary-btn,
+:root[data-theme='dark'] .register-submit {
+  color: #030303;
+  border-color: rgba(0, 240, 255, 0.62);
+  background: linear-gradient(135deg, #ffd56b 0%, #f0b33d 42%, #00f0ff 100%);
+  box-shadow: 0 0 24px rgba(0, 240, 255, 0.22), 0 16px 34px rgba(0, 0, 0, 0.42);
+}
+
+:root[data-theme='dark'] .action-btn.secondary,
+:root[data-theme='dark'] .action-btn.tertiary,
+:root[data-theme='dark'] .google-btn,
+:root[data-theme='dark'] .register-btn.ghost,
+:root[data-theme='dark'] .register-login-chip,
+:root[data-theme='dark'] .mission-check {
+  color: #fff7e6;
+  background: rgba(10, 9, 7, 0.76);
+}
+
+:root[data-theme='dark'] .action-btn.disabled {
+  color: #746a58;
+  background: rgba(28, 24, 16, 0.7);
+  border-color: rgba(255, 213, 107, 0.14);
+}
+
+:root[data-theme='dark'] .action-btn:hover:not(:disabled),
+:root[data-theme='dark'] .login-primary-btn:hover,
+:root[data-theme='dark'] .google-btn:hover,
+:root[data-theme='dark'] .register-btn.ghost:hover,
+:root[data-theme='dark'] .register-login-chip:hover {
+  box-shadow: 0 0 28px rgba(0, 240, 255, 0.22), 0 16px 34px rgba(0, 0, 0, 0.44);
+}
+
+:root[data-theme='dark'] .skill-chip {
+  color: #f7edd4;
+  border-color: rgba(255, 213, 107, 0.28);
+  background: rgba(13, 12, 10, 0.8);
+}
+
+:root[data-theme='dark'] .skill-chip.selected,
+:root[data-theme='dark'] .location-card.selected,
+:root[data-theme='dark'] .mission-check.checked {
+  color: #030303;
+  border-color: rgba(0, 240, 255, 0.62);
+  background: linear-gradient(135deg, #ffd56b, #00f0ff);
+}
+
+:root[data-theme='dark'] .premium-hero {
+  border-color: rgba(255, 213, 107, 0.44);
+  background:
+    radial-gradient(circle, rgba(0, 240, 255, 0.16) 1px, transparent 1.6px) 0 0 / 20px 20px,
+    linear-gradient(115deg, rgba(8, 8, 7, 0.96), rgba(22, 17, 8, 0.88) 52%, rgba(0, 0, 0, 0.98)),
+    #030303;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.64), 0 0 48px rgba(0, 240, 255, 0.09);
+}
+
+:root[data-theme='dark'] .premium-hero::after {
+  background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.72), rgba(255, 213, 107, 0.72), transparent);
+}
+
+:root[data-theme='dark'] .premium-hero h1 {
+  color: #fff7e6;
+}
+
+:root[data-theme='dark'] .premium-hero p {
+  color: #c9bda4;
+}
+
+:root[data-theme='dark'] .hero-showcase-card strong {
+  color: #ffffff;
+}
+
+:root[data-theme='dark'] .hero-slide-dots button {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+:root[data-theme='dark'] .hero-slide-dots button.active {
+  background: #00f0ff;
+  box-shadow: 0 0 18px rgba(0, 240, 255, 0.54);
+}
+
+:root[data-theme='dark'] .home-hero,
+:root[data-theme='dark'] .page-hero {
+  border-color: rgba(255, 213, 107, 0.3);
+  background: linear-gradient(135deg, rgba(12, 11, 9, 0.9), rgba(3, 3, 3, 0.88));
+  box-shadow: 0 22px 64px rgba(0, 0, 0, 0.54);
+}
+
+:root[data-theme='dark'] .internship-card {
+  border-color: rgba(255, 213, 107, 0.3);
+  background: linear-gradient(180deg, rgba(16, 14, 10, 0.94), rgba(4, 4, 4, 0.94));
+  box-shadow: 0 22px 58px rgba(0, 0, 0, 0.48), inset 0 0 0 1px rgba(0, 240, 255, 0.03);
+}
+
+:root[data-theme='dark'] .internship-card h3,
+:root[data-theme='dark'] .track-card h3,
+:root[data-theme='dark'] .stretch-item strong,
+:root[data-theme='dark'] .summary-pill strong,
+:root[data-theme='dark'] .profile-fact-list strong,
+:root[data-theme='dark'] .document-list strong {
+  color: #ffffff;
+}
+
+:root[data-theme='dark'] .score-badge,
+:root[data-theme='dark'] .xp-ring {
+  color: #030303;
+  border-color: rgba(0, 240, 255, 0.58);
+  background: linear-gradient(145deg, #ffd56b 0%, #f0b33d 55%, #00f0ff 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28), 0 0 26px rgba(0, 240, 255, 0.2);
+}
+
+:root[data-theme='dark'] .internship-status-pill {
+  color: #f8ecd0;
+  border-color: rgba(255, 213, 107, 0.3);
+  background: rgba(10, 9, 7, 0.76);
+}
+
+:root[data-theme='dark'] .internship-status-pill.ready {
+  color: #00f0ff;
+  background: rgba(0, 240, 255, 0.08);
+}
+
+:root[data-theme='dark'] .internship-status-pill.gap {
+  color: #ffd56b;
+  background: rgba(255, 213, 107, 0.1);
+}
+
+:root[data-theme='dark'] .chatbot-panel {
+  border-top-color: rgba(255, 213, 107, 0.24);
+}
+
+:root[data-theme='dark'] .chat-bubble {
+  border-color: rgba(255, 213, 107, 0.28);
+}
+
+:root[data-theme='dark'] .chat-bubble.assistant {
+  color: var(--text);
+  background: rgba(13, 12, 10, 0.84);
+}
+
+:root[data-theme='dark'] .chat-bubble.user {
+  color: #030303;
+  background: linear-gradient(135deg, #ffd56b, #00f0ff);
+}
+
+:root[data-theme='dark'] .chat-bubble.user .chat-role {
+  color: #16110a;
+}
+
+:root[data-theme='dark'] .roadmap-source-alert {
+  color: #d6c7a9;
+  border-color: rgba(255, 213, 107, 0.28);
+  background: rgba(255, 213, 107, 0.07);
+}
+
+:root[data-theme='dark'] .raw-preview pre {
+  color: #fff7e6;
+  background: #020202;
+}
+
+:root[data-theme='dark'] .progress-meter {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 213, 107, 0.22);
+}
+
+:root[data-theme='dark'] .progress-meter-bar,
+:root[data-theme='dark'] .progress-meter-bar.complete {
+  background: linear-gradient(90deg, #00f0ff 0%, #ffd56b 48%, #ff3df2 100%);
+  box-shadow: 0 0 24px rgba(0, 240, 255, 0.34);
+}
+
+:root[data-theme='dark'] .level-row {
+  border-left-color: rgba(0, 240, 255, 0.42);
+}
+
+:root[data-theme='dark'] .level-row.done {
+  border-color: rgba(255, 213, 107, 0.36);
+  border-left-color: #00f0ff;
+}
+
+:root[data-theme='dark'] .timeline-dot {
+  background: #00f0ff;
+  box-shadow: 0 0 0 5px rgba(0, 240, 255, 0.12), 0 0 18px rgba(0, 240, 255, 0.44);
+}
+
+:root[data-theme='dark'] .profile-cover-strip {
+  border-bottom-color: rgba(255, 213, 107, 0.28);
+  background:
+    radial-gradient(circle, rgba(0, 240, 255, 0.13) 1px, transparent 1.7px) 0 0 / 18px 18px,
+    linear-gradient(135deg, rgba(9, 8, 7, 0.96), rgba(42, 30, 8, 0.76), rgba(0, 0, 0, 0.96));
+}
+
+:root[data-theme='dark'] .profile-avatar.large {
+  border-color: #060606;
+}
+
+:root[data-theme='dark'] .profile-link-row a,
+:root[data-theme='dark'] .profile-link-row span {
+  background: rgba(8, 8, 7, 0.82);
+}
+
+:root[data-theme='dark'] .document-list .ready {
+  border-color: rgba(0, 240, 255, 0.36);
+}
+
+:root[data-theme='dark'] .document-list .missing {
+  border-color: rgba(255, 77, 125, 0.36);
+}
+
+:root[data-theme='dark'] .modal-backdrop {
+  background: rgba(0, 0, 0, 0.78);
+}
+
+:root[data-theme='dark'] .toast {
+  color: var(--text);
+  border-color: rgba(255, 213, 107, 0.32);
+  background: rgba(9, 8, 6, 0.96);
+  box-shadow: 0 20px 54px rgba(0, 0, 0, 0.58), 0 0 24px rgba(0, 240, 255, 0.09);
+}
+
+:root[data-theme='dark'] .login-card,
+:root[data-theme='dark'] .register-promo,
+:root[data-theme='dark'] .register-form-card,
+:root[data-theme='dark'] .register-hero-inline,
+:root[data-theme='dark'] .register-topbar {
+  background: linear-gradient(160deg, rgba(16, 13, 8, 0.94), rgba(3, 3, 3, 0.96));
+}
+
+:root[data-theme='dark'] .remember {
+  color: #d4c7aa;
+}
+
+:root[data-theme='dark'] .remember input {
+  accent-color: #00f0ff;
+}
+
+:root[data-theme='dark'] .login-divider {
+  color: #8e826c;
+}
+
+:root[data-theme='dark'] .login-divider::before,
+:root[data-theme='dark'] .login-divider::after {
+  background: rgba(255, 213, 107, 0.22);
+}
+
+:root[data-theme='dark'] .google-btn {
+  color: #fff7e6;
+  background: rgba(10, 9, 7, 0.82);
+}
+
+:root[data-theme='dark'] .login-privacy,
+:root[data-theme='dark'] .register-nav {
+  color: #ad9f84;
+}
+
+:root[data-theme='dark'] .register-form-card input,
+:root[data-theme='dark'] .register-form-card select,
+:root[data-theme='dark'] .register-form-card textarea {
+  background: rgba(2, 2, 2, 0.72);
+  border-color: rgba(255, 213, 107, 0.3);
+}
+
