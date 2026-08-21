@@ -29,7 +29,7 @@ def create_app():
     app = Flask(__name__, instance_relative_config=True, static_folder=None)
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key")
 
-    CORS(app, origins=os.getenv("ALLOWED_ORIGINS", "*").split(","))
+    CORS(app, origins=os.getenv("ALLOWED_ORIGINS"))
     ensure_collections()
 
     app.register_blueprint(recommend_bp, url_prefix="/api")
