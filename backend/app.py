@@ -22,14 +22,21 @@ from backend.routes.uploads import uploads_bp
 from backend.database.repository import ensure_collections, storage_mode
 
 BACKEND_ENV_PATH = Path(__file__).resolve().parent / ".env"
-load_dotenv(BACKEND_ENV_PATH, override=True)
+load_dotenv(BACKEND_ENV_PATH, override=False)
 
 
 def create_app():
     app = Flask(__name__, instance_relative_config=True, static_folder=None)
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key")
 
-    CORS(app, origins=os.getenv("ALLOWED_ORIGINS"))
+    allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+
+    CORS(
+        app,
+        origins=allowed_origins,
+        supports_credentials=True
+    )
+    
     ensure_collections()
 
     app.register_blueprint(recommend_bp, url_prefix="/api")
