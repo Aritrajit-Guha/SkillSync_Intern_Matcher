@@ -29,7 +29,16 @@ def create_app():
     app = Flask(__name__, instance_relative_config=True, static_folder=None)
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key")
 
-    allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+    # The frontend and API are deployed on different sites (Vercel and
+    # Render).  Flask's default Lax cookie policy prevents the session cookie
+    # from being sent with the cross-site dashboard request.
+    app.config["SESSION_COOKIE_SAMESITE"] = os.getenv("SESSION_COOKIE_SAMESITE", "None")
+    app.config["SESSION_COOKIE_SECURE"] = os.getenv("SESSION_COOKIE_SECURE", "1").lower() in {
+        "1", "true", "yes", "on"
+    }
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+
+    allowed_origins = [origin.strip().rstrip("/") for origin in os.getenv("ALLOWED_ORIGINS", "").split(",") if origin.strip()]
 
     CORS(
         app,
